@@ -21,39 +21,35 @@ public class Knife4jConfiguration {
      * 访问路径:http//localhost:9080/doc.html
      * 【重要】指定Controller包路径,这样前端的伙伴就知道
      */
-    private String basePackage = "com.cooxiao.jsd23104.controller";/*对controller下的东西起作用,主要起作用的*/
+    private String basePackage = "com.homework.railwayproject.controller";/*对controller下的东西起作用,主要起作用的*/
     /**
      * 分组名称
      */
-    private String groupName = "jsd23104";
-    /**
-     * 主机名
-     */
-    private String host = "http://java.cooxiao.cn";
+    private String groupName = "homework";
     /**
      * 标题
      */
-    private String title = "酷鲨商城在线API文档--商品管理";
+    private String title = "高铁客运量数据分析系统";
     /**
      * 简介
      */
-    private String description = "酷鲨商城在线API文档--商品管理";
+    private String description = "高铁客运量数据分析";
     /**
      * 服务条款URL
      */
-    private String termsOfServiceUrl = "http://www.apache.org/licenses/LICENSE-2.0";
+    private String termsOfServiceUrl = "http://www.baidu.com";
     /**
      * 联系人
      */
-    private String contactName = "Java教学研发部";
+    private String contactName = "谢云轩";
     /**
      * 联系网址
      */
-    private String contactUrl = "http://java.cooxiao.cn";
+    private String contactUrl = "http://www.baidu.com";
     /**
      * 联系邮箱
      */
-    private String contactEmail = "java@cooxiao.cn";
+    private String contactEmail = "1721476339@qq.com";
     /**
      * 版本号
      */
