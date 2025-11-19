@@ -1,0 +1,16 @@
+spring:
+  application:
+    name: railwayProject
+
+  profiles:
+    active: dev
+  jackson:
+    default-property-inclusion: non_null
+mybatis-plus:
+  check-config-location: true
+  mapper-locations: classpath*:mapper/*.xml
+  type-aliases-package: com.homework.railwayproject.entity
+
+knife4j:
+  basic:
+    enable: true
