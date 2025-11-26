@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 //Date:2025/11/18
 //Time:20:36
 @Data
-public class HighSpeedPassenger extends BaseEntity{
+public class HighSpeedPassenger extends BaseEntity{//这个类是原始数据类,仅用于辅助数据导入,之后还会有清洗数据类
     private Long id;                  // 序号
     private String lineCode;          // 运营线路编码
     private Integer trainCode;        // 列车编码

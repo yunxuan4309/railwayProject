@@ -11,6 +11,7 @@ import io.swagger.v3.oas.models.info.Contact;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.info.License;
 import org.springdoc.core.models.GroupedOpenApi;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -29,27 +30,31 @@ public class Knife4jConfiguration {
     /**
      * 标题
      */
-    private String title = "高铁客运量数据分析系统";
+    @Value("${knife4j.title:铁路项目在线API文档}")
+    private String title;
     /**
      * 简介
      */
-    private String description = "高铁客运量数据分析";
+    @Value("${knife4j.description:铁路项目在线API文档}")
+    private String description;
     /**
      * 服务条款URL
      */
     private String termsOfServiceUrl = "http://www.baidu.com";
     /**
-     * 联系人
+     * 联系人姓名
      */
-    private String contactName = "谢云轩";
+    @Value("${knife4j.contact.name:开发团队}")
+    private String contactName;
     /**
      * 联系网址
      */
     private String contactUrl = "http://www.baidu.com";
     /**
-     * 联系邮箱
+     * 联系人邮箱
      */
-    private String contactEmail = "1721476339@qq.com";
+    @Value("${knife4j.contact.email:your-email@example.com}")
+    private String contactEmail;
     /**
      * 版本号
      */

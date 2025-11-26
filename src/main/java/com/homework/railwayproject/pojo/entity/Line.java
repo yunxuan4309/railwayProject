@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 //Time:20:35
 @Data
 public class Line extends BaseEntity{
+    //补充线路表
     private String lineCode;          // 线路编码
     private String lineName;          // 线路名称
     private String lineType;          // 线路类型

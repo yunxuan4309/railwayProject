@@ -1,6 +1,8 @@
 package com.homework.railwayproject.pojo.entity;
 
 import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 
@@ -9,7 +11,8 @@ import java.time.LocalDateTime;
 //ID:[632307060623]
 //Date:2025/11/18
 //Time:20:48
-@Data
+@Setter
+@Getter
 public abstract class BaseEntity {
     protected LocalDateTime createTime;//创建时间
     protected LocalDateTime updateTime;//更新时间
