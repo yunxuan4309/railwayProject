@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.homework.railwayproject.mapper.HighSpeedPassengerMapper">
+
+    <insert id="insertBatchSomeColumn">
+        INSERT INTO high_speed_passenger (
+        id, line_code, train_code, site_id, line_site_id, upline_code,
+        operation_date, operation_time, distance_order, is_start_site, is_end_site,
+        arrival_time, departure_time, stop_time, passenger_flow, upline_passenger_flow,
+        downline_passenger_flow, boarding_count, alighting_count, remarks,
+        train_departure_date, train_departure_time, site_sequence, ticket_type,
+        ticket_price, seat_type_code, train_company_code, start_date,
+        start_station_telecode, start_station, end_station_telecode, end_station,
+        train_level_code, train_type_code, ticket_station, farthest_arrival_station,
+        ticket_time, arrival_station, revenue, create_time, update_time
+        ) VALUES
+        <foreach collection="list" item="item" separator=",">
+            (
+            #{item.id}, #{item.lineCode}, #{item.trainCode}, #{item.siteId}, #{item.lineSiteId}, #{item.uplineCode},
+            #{item.operationDate}, #{item.operationTime}, #{item.distanceOrder}, #{item.isStartSite}, #{item.isEndSite},
+            #{item.arrivalTime}, #{item.departureTime}, #{item.stopTime}, #{item.passengerFlow}, #{item.uplinePassengerFlow},
+            #{item.downlinePassengerFlow}, #{item.boardingCount}, #{item.alightingCount}, #{item.remarks},
+            #{item.trainDepartureDate}, #{item.trainDepartureTime}, #{item.siteSequence}, #{item.ticketType},
+            #{item.ticketPrice}, #{item.seatTypeCode}, #{item.trainCompanyCode}, #{item.startDate},
+            #{item.startStationTelecode}, #{item.startStation}, #{item.endStationTelecode}, #{item.endStation},
+            #{item.trainLevelCode}, #{item.trainTypeCode}, #{item.ticketStation}, #{item.farthestArrivalStation},
+            #{item.ticketTime}, #{item.arrivalStation}, #{item.revenue}, NOW(), NOW()
+            )
+        </foreach>
+    </insert>
+
+</mapper>

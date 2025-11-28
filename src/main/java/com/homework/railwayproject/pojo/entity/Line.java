@@ -2,6 +2,7 @@ package com.homework.railwayproject.pojo.entity;
 
 import lombok.Data;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -11,7 +12,7 @@ import java.time.LocalDateTime;
 //Date:2025/11/18
 //Time:20:35
 @Data
-public class Line extends BaseEntity{
+public class Line extends BaseEntity implements Serializable {
     //补充线路表
     private String lineCode;          // 线路编码
     private String lineName;          // 线路名称

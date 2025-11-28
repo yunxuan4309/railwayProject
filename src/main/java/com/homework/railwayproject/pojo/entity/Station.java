@@ -2,6 +2,7 @@ package com.homework.railwayproject.pojo.entity;
 
 import lombok.Data;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -11,7 +12,7 @@ import java.time.LocalDateTime;
 //Date:2025/11/18
 //Time:20:29
 @Data
-public class Station extends BaseEntity{
+public class Station extends BaseEntity implements Serializable {
     private Integer siteId;           // 站点id
     private Integer typeId;           // 类型id
     private Integer transportModeCode; // 运输方式编码

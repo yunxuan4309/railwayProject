@@ -3,6 +3,11 @@ spring:
     url: jdbc:mysql://localhost:3306/railway_project?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
     username: root
     password: root
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      max-lifetime: 1800000
 server:
   port: 9080
 

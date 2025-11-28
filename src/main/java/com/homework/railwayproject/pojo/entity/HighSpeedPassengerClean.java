@@ -1,6 +1,8 @@
 package com.homework.railwayproject.pojo.entity;
 
 import lombok.Data;
+
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -14,7 +16,7 @@ import java.time.LocalTime;
  * @date 2025/11/18
  */
 @Data
-public class HighSpeedPassengerClean extends BaseEntity{
+public class HighSpeedPassengerClean extends BaseEntity implements Serializable {
 
     /**
      * 车票唯一ID（清洗后生成）

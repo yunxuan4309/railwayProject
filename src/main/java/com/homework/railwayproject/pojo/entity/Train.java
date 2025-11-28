@@ -2,6 +2,7 @@ package com.homework.railwayproject.pojo.entity;
 
 import lombok.Data;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
 
 //Author:[谢云轩]
@@ -10,7 +11,7 @@ import java.time.LocalDateTime;
 //Date:2025/11/18
 //Time:20:34
 @Data
-public class Train extends BaseEntity{
+public class Train extends BaseEntity implements Serializable {
     private Integer trainCode;        // 列车编码
     private String uplineCode;        // 上行线编码
     private Integer transportModeCode; // 运输方式编码

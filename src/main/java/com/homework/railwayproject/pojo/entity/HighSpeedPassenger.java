@@ -2,9 +2,10 @@ package com.homework.railwayproject.pojo.entity;
 
 import lombok.Data;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+
 
 //Author:[谢云轩]
 //QQ:[1721476339]
@@ -12,7 +13,7 @@ import java.time.LocalDateTime;
 //Date:2025/11/18
 //Time:20:36
 @Data
-public class HighSpeedPassenger extends BaseEntity{//这个类是原始数据类,仅用于辅助数据导入,之后还会有清洗数据类
+public class HighSpeedPassenger extends BaseEntity implements Serializable { //这个类是原始数据类,仅用于辅助数据导入,之后还会有清洗数据类
     private Long id;                  // 序号
     private String lineCode;          // 运营线路编码
     private Integer trainCode;        // 列车编码
@@ -30,7 +31,7 @@ public class HighSpeedPassenger extends BaseEntity{//这个类是原始数据类
     private String stopTime;          // 经停时间
 
     private Integer passengerFlow;    // 客流量
-    private Integer uplinePassengerFlow;  // 上行客流量
+    private Integer uplinePassengerFlow; // 上行客流量
     private Integer downlinePassengerFlow; // 下行客流量
     private Integer boardingCount;    // 上客量
     private Integer alightingCount;   // 下客量
