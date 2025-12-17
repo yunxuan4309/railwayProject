@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.homework.railwayproject.mapper.PassengerFlowStatMapper">
+
+    <!-- 1. 日客流统计 -->
+    <select id="selectDailyStat" resultType="com.homework.railwayproject.pojo.entity.PassengerFlowStat">
+        SELECT travel_date        AS beginDate,
+               travel_date        AS endDate,
+               'daily'            AS periodType,
+               SUM(boarding_count + alighting_count) AS passengerFlow,
+               CAST(0 AS DECIMAL(10,2)) AS comparisonRate,      -- 环比默认值
+               CAST(0 AS DECIMAL(10,2)) AS yearOnYearRate,      -- 同比默认值
+               0                  AS isHoliday            -- 默认非节假日
+        FROM high_speed_passenger_clean
+        WHERE travel_date BETWEEN #{startDate} AND #{endDate}
+        GROUP BY beginDate
+        ORDER BY beginDate
+    </select>
+
+    <!-- 2. 周客流统计 -->
+    <select id="selectWeeklyStat" resultType="com.homework.railwayproject.pojo.entity.PassengerFlowStat">
+        SELECT #{startDate}       AS beginDate,
+               #{endDate}         AS endDate,
+               'weekly'                          AS periodType,
+               SUM(boarding_count + alighting_count) AS passengerFlow,
+               CAST(0 AS DECIMAL(10,2)) AS comparisonRate,
+               CAST(0 AS DECIMAL(10,2)) AS yearOnYearRate,
+               0                                 AS isHoliday
+        FROM high_speed_passenger_clean
+        WHERE travel_date BETWEEN #{startDate} AND #{endDate}
+        GROUP BY beginDate
+        ORDER BY beginDate
+    </select>
+
+    <!-- 3. 月客流统计 -->
+    <select id="selectMonthlyStat" resultType="com.homework.railwayproject.pojo.entity.PassengerFlowStat">
+        SELECT #{startDate}       AS beginDate,
+               #{endDate}         AS endDate,
+               'monthly'                          AS periodType,
+               SUM(boarding_count + alighting_count) AS passengerFlow,
+               CAST(0 AS DECIMAL(10,2)) AS comparisonRate,
+               CAST(0 AS DECIMAL(10,2)) AS yearOnYearRate,
+               0                                 AS isHoliday
+        FROM high_speed_passenger_clean
+        WHERE travel_date BETWEEN #{startDate} AND #{endDate}
+        GROUP BY beginDate
+        ORDER BY beginDate
+    </select>
+</mapper>
