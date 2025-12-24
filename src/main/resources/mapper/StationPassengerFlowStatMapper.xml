@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.homework.railwayproject.mapper.StationPassengerFlowStatMapper">
+    
+    <!-- 查询指定时间段内各站点的上客量和下客量前20名 -->
+    <select id="selectTop20Stations" resultType="com.homework.railwayproject.pojo.entity.StationPassengerFlowStat">
+        SELECT 
+            s.site_id AS siteId,
+            s.station_name AS siteName,
+            COALESCE(SUM(hspc.boarding_count), 0) AS boardingCount,
+            COALESCE(SUM(hspc.alighting_count), 0) AS alightingCount,
+            (COALESCE(SUM(hspc.boarding_count), 0) + COALESCE(SUM(hspc.alighting_count), 0)) AS totalPassengerCount,
+            ROW_NUMBER() OVER (ORDER BY (COALESCE(SUM(hspc.boarding_count), 0) + COALESCE(SUM(hspc.alighting_count), 0)) DESC) AS siteTop
+        FROM station s
+        LEFT JOIN high_speed_passenger_clean hspc ON (
+            s.site_id = hspc.original_site_id 
+            AND hspc.travel_date >= #{startDate} 
+            AND hspc.travel_date &lt;= #{endDate}
+            AND (
+                (hspc.travel_date = #{startDate} AND hspc.depart_time >= '06:30:00') OR
+                (hspc.travel_date > #{startDate} AND hspc.depart_time &lt; '06:30:00')
+            )
+        )
+        GROUP BY s.site_id, s.station_name
+        ORDER BY totalPassengerCount DESC
+        LIMIT 20
+    </select>
+    <select id="getStationPassengerFlow" resultType="com.homework.railwayproject.pojo.entity.StationPassengerFlowStat">
+        SELECT s.site_id                                                                        AS siteId,
+               s.station_name                                                                   AS siteName,
+               COALESCE(SUM(hspc.boarding_count), 0)                                            AS boardingCount,
+               COALESCE(SUM(hspc.alighting_count), 0)                                           AS alightingCount,
+               (COALESCE(SUM(hspc.boarding_count), 0) + COALESCE(SUM(hspc.alighting_count), 0)) AS totalPassengerCount
+        FROM station s
+        LEFT JOIN high_speed_passenger_clean hspc ON s.site_id = hspc.original_site_id
+        WHERE s.site_id = #{siteId}
+        GROUP BY s.site_id, s.station_name
+    </select>
+
+</mapper>
