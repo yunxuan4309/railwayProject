@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.homework.railwayproject.mapper.PeakHourStatMapper">
+    
+    <!-- 按小时统计指定日期的客流数据 -->
+    <select id="selectHourlyStatByDate" resultType="com.homework.railwayproject.pojo.entity.PeakHourStat">
+        SELECT
+            sub.startTime,
+            DATE_FORMAT(ADDTIME(sub.startTime, '1:00:00'), '%H:00:00') AS endTime,
+            SUM(sub.boarding_count + sub.alighting_count) AS passengerCount,
+            FALSE AS isPeak
+        FROM (
+                 SELECT
+                     DATE_FORMAT(depart_time, '%H:00:00') AS startTime,
+                     boarding_count,
+                     alighting_count
+                 FROM high_speed_passenger_clean
+                 WHERE travel_date = #{date}
+             ) AS sub
+        GROUP BY sub.startTime
+        ORDER BY sub.startTime;
+    </select>
+    
+</mapper>
