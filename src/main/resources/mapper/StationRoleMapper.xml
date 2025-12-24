@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.homework.railwayproject.mapper.StationRoleMapper">
+
+    <!-- 统计指定站点在指定日期的客流数据 -->
+    <select id="selectStationStats" resultType="com.homework.railwayproject.pojo.dto.StationStats">
+        SELECT
+            COALESCE(departure_count, 0) AS departureCount,
+            COALESCE(arrival_count, 0) AS arrivalCount,
+            COALESCE(transfer_count, 0) AS transferCount,
+            COALESCE(total_flow, 0) AS totalPassengerFlow,
+            CASE
+                WHEN COALESCE(total_flow, 0) = 0 THEN 0
+                ELSE ROUND(COALESCE(departure_count, 0) * 1.0 / total_flow, 4)
+                END AS departureRatio,
+            CASE
+                WHEN COALESCE(total_flow, 0) = 0 THEN 0
+                ELSE ROUND(COALESCE(arrival_count, 0) * 1.0 / total_flow, 4)
+                END AS arrivalRatio,
+            CASE
+                WHEN COALESCE(total_flow, 0) = 0 THEN 0
+                ELSE ROUND(COALESCE(transfer_count, 0) * 1.0 / total_flow, 4)
+                END AS transferRatio
+        FROM (
+                 SELECT
+                     SUM(CASE WHEN depart_station_id = #{stationId} THEN 1 ELSE 0 END * boarding_count) AS departure_count,
+                     SUM(CASE WHEN arrive_station_id = #{stationId} THEN 1 ELSE 0 END * alighting_count) AS arrival_count,
+                     SUM(CASE WHEN original_site_id = #{stationId} AND depart_station_id != #{stationId} AND arrive_station_id != #{stationId} THEN (boarding_count + alighting_count) ELSE 0 END) AS transfer_count,
+                     SUM(CASE
+                             WHEN depart_station_id = #{stationId} THEN boarding_count
+                             WHEN arrive_station_id = #{stationId} THEN alighting_count
+                             WHEN original_site_id = #{stationId} THEN (boarding_count + alighting_count)
+                             ELSE 0
+                         END) AS total_flow
+                 FROM high_speed_passenger_clean
+                 WHERE travel_date = #{analysisDate}
+             ) stats_summary
+    </select>
+</mapper>
