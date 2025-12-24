@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.homework.railwayproject.mapper.CityRouteHeatMapper">
+
+    <select id="selectCityRouteHeatByDate" resultType="com.homework.railwayproject.pojo.entity.CityRouteHeat">
+        SELECT 
+            origin_city AS originCity,
+            dest_city AS destCity,
+            daily_passenger_flow AS dailyPassengerFlow,
+            total_line_passenger_flow AS totalLinePassengerFlow,
+            heat_value AS heatValue,
+            CAST(rank_num AS SIGNED) AS `rank`
+        FROM (
+            SELECT 
+                s1.city AS origin_city,
+                s2.city AS dest_city,
+                SUM(hspc.boarding_count + hspc.alighting_count) AS daily_passenger_flow,
+                line_total.total_line_passenger_flow,
+                ROUND(SUM(hspc.boarding_count + hspc.alighting_count) * 1.0 / line_total.total_line_passenger_flow, 4) AS heat_value,
+                ROW_NUMBER() OVER (ORDER BY ROUND(SUM(hspc.boarding_count + hspc.alighting_count) * 1.0 / line_total.total_line_passenger_flow, 4) DESC) AS rank_num
+            FROM high_speed_passenger_clean hspc
+            LEFT JOIN station s1 ON hspc.depart_station_id = s1.site_id AND s1.city IS NOT NULL
+            LEFT JOIN station s2 ON hspc.arrive_station_id = s2.site_id AND s2.city IS NOT NULL
+            JOIN (
+                SELECT 
+                    SUM(boarding_count + alighting_count) AS total_line_passenger_flow
+                FROM high_speed_passenger_clean
+                WHERE travel_date = #{date}
+            ) line_total
+            WHERE hspc.travel_date = #{date}
+                AND s1.city IS NOT NULL 
+                AND s2.city IS NOT NULL 
+                AND s1.city != s2.city  <!-- 排除同城市 -->
+            GROUP BY s1.city, s2.city, line_total.total_line_passenger_flow
+        ) AS t
+        ORDER BY heat_value DESC
+    </select>
+</mapper>
