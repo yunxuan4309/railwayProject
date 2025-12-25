@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.homework.railwayproject.mapper.BusyIndexStatMapper">
+
+    <!-- 查询最近一段时间内各站点的繁忙指数前20名 -->
+    <select id="selectTop20BusyIndexStations" resultType="com.homework.railwayproject.pojo.entity.BusyIndexStat">
+        SELECT * FROM (
+            SELECT 
+                s.site_id AS siteId,
+                s.station_name AS siteName,
+                COALESCE(SUM(hspc.boarding_count), 0) AS departureCount,
+                COALESCE(SUM(hspc.alighting_count), 0) AS arrivalCount,
+                (COALESCE(SUM(hspc.boarding_count), 0) * 0.4 + COALESCE(SUM(hspc.alighting_count), 0) * 0.6) AS busyIndex
+            FROM station s
+            LEFT JOIN high_speed_passenger_clean hspc ON (
+                s.site_id = hspc.original_site_id 
+                AND hspc.travel_date >= DATE(#{startTime})
+                AND hspc.travel_date &lt;= DATE(#{endTime})
+            )
+            GROUP BY s.site_id, s.station_name
+        ) t
+        ORDER BY busyIndex DESC
+        LIMIT 20
+    </select>
+    <select id="selectBusyIndexStatByIdAndTime"
+            resultType="com.homework.railwayproject.pojo.entity.BusyIndexStat">
+
+        <!-- 传入参数：站点ID、开始时间、结束时间 -->
+        SELECT
+        s.site_id AS siteId,
+        s.station_name AS siteName,
+        COALESCE(SUM(hspc.boarding_count), 0) AS departureCount,
+        COALESCE(SUM(hspc.alighting_count), 0) AS arrivalCount,
+        (COALESCE(SUM(hspc.boarding_count), 0) * 0.4 + COALESCE(SUM(hspc.alighting_count), 0) * 0.6) AS busyIndex
+        FROM station s
+        LEFT JOIN high_speed_passenger_clean hspc ON (
+        s.site_id = hspc.original_site_id
+        AND hspc.travel_date >= DATE(#{startTime})
+        AND hspc.travel_date &lt;= DATE(#{endTime})
+        )
+        WHERE s.site_id = #{siteId}
+        GROUP BY s.site_id, s.station_name
+
+
+
+    </select>
+
+</mapper>
