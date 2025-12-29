@@ -36,4 +36,32 @@
                  WHERE travel_date = #{analysisDate}
              ) stats_summary
     </select>
+
+    <!-- 根据站点ID获取站点名称 -->
+    <select id="getStationNameById" resultType="java.lang.String">
+        SELECT station_name
+        FROM station
+        WHERE site_id = #{siteId}
+    </select>
+
+    <!-- 根据站点ID获取站点信息 -->
+    <select id="getStationById" resultType="com.homework.railwayproject.pojo.entity.Station">
+        SELECT
+            site_id,
+            type_id,
+            transport_mode_code,
+            station_name,
+            is_disabled,
+            site_code,
+            station_telecode,
+            station_alias,
+            longitude,
+            latitude,
+            station_level,
+            platform_count,
+            gate_count,
+            city
+        FROM station
+        WHERE site_id = #{siteId}
+    </select>
 </mapper>

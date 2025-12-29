@@ -1,6 +1,7 @@
 package com.homework.railwayproject.mapper;
 
 import com.homework.railwayproject.pojo.dto.StationStats;
+import com.homework.railwayproject.pojo.entity.Station;
 import org.apache.ibatis.annotations.Param;
 
 import java.time.LocalDate;
@@ -15,4 +16,20 @@ public interface StationRoleMapper {
      */
     StationStats selectStationStats(@Param("stationId") Integer stationId,
                                     @Param("analysisDate") LocalDate analysisDate);
+    
+    /**
+     * 根据站点ID获取站点名称
+     * 
+     * @param siteId 站点ID
+     * @return 站点名称
+     */
+    String getStationNameById(@Param("siteId") Integer siteId);
+    
+    /**
+     * 根据站点ID获取站点信息
+     * 
+     * @param siteId 站点ID
+     * @return 站点信息
+     */
+    Station getStationById(@Param("siteId") Integer siteId);
 }
