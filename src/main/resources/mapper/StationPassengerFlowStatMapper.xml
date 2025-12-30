@@ -28,6 +28,28 @@
         ORDER BY totalPassengerCount DESC
         LIMIT 20
     </select>
+    
+    <!-- 查询指定站点在指定时间段内的客流统计 -->
+    <select id="getStationPassengerFlowByDate" resultType="com.homework.railwayproject.pojo.entity.StationPassengerFlowStat">
+        SELECT s.site_id                                                                        AS siteId,
+               s.station_name                                                                   AS siteName,
+               COALESCE(SUM(hspc.boarding_count), 0)                                            AS boardingCount,
+               COALESCE(SUM(hspc.alighting_count), 0)                                           AS alightingCount,
+               (COALESCE(SUM(hspc.boarding_count), 0) + COALESCE(SUM(hspc.alighting_count), 0)) AS totalPassengerCount
+        FROM station s
+        LEFT JOIN high_speed_passenger_clean hspc ON (
+            s.site_id = hspc.original_site_id
+            AND hspc.travel_date >= #{startDate}
+            AND hspc.travel_date &lt;= #{endDate}
+            AND (
+                (hspc.travel_date = #{startDate} AND hspc.depart_time >= '06:30:00') OR
+                (hspc.travel_date > #{startDate} AND hspc.depart_time &lt; '06:30:00')
+            )
+        )
+        WHERE s.site_id = #{siteId}
+        GROUP BY s.site_id, s.station_name
+    </select>
+    
     <select id="getStationPassengerFlow" resultType="com.homework.railwayproject.pojo.entity.StationPassengerFlowStat">
         SELECT s.site_id                                                                        AS siteId,
                s.station_name                                                                   AS siteName,

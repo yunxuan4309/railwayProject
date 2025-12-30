@@ -2,14 +2,11 @@ package com.homework.railwayproject.mapper;
 
 import com.homework.railwayproject.pojo.entity.StationPassengerFlowStat;
 import org.apache.ibatis.annotations.Mapper;
-import org.apache.ibatis.annotations.Param;
+import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
 import java.util.List;
 
-/**
- * 站点客流统计Mapper接口
- */
 @Mapper
 public interface StationPassengerFlowStatMapper {
     
@@ -21,8 +18,21 @@ public interface StationPassengerFlowStatMapper {
      * @param endDate 结束日期
      * @return 站点客流统计列表
      */
-    List<StationPassengerFlowStat> selectTop20Stations(@Param("startDate") LocalDate startDate, 
+    List<StationPassengerFlowStat> selectTop20Stations(@Param("startDate") LocalDate startDate,
                                                        @Param("endDate") LocalDate endDate);
+
+    /**
+     * 查询指定站点在指定时间段内的客流统计
+     * 
+     * @param siteId 站点ID
+     * @param startDate 开始日期
+     * @param endDate 结束日期
+     * @return 站点客流统计数据
+     */
+    StationPassengerFlowStat getStationPassengerFlowByDate(@Param("siteId") Integer siteId,
+                                                           @Param("startDate") LocalDate startDate,
+                                                           @Param("endDate") LocalDate endDate);
+                                                           
 /**
  * 获取指定站点的客流统计数据
  *
