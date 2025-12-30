@@ -260,5 +260,35 @@ create index idx_train_id
 create index idx_upline_code
     on train (upline_code);
 
+-- 创建灵敏度配置表
+CREATE TABLE sensitivity_config (
+    id INT AUTO_INCREMENT PRIMARY KEY COMMENT '主键ID',
+    config_name VARCHAR(100) NOT NULL COMMENT '配置名称',
+    config_type VARCHAR(50) NOT NULL UNIQUE COMMENT '配置类型',
+    sensitivity_value DOUBLE(3,2) DEFAULT 0.15 COMMENT '灵敏度值（0.00-1.00之间）',
+    description VARCHAR(255) COMMENT '配置描述',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    create_by VARCHAR(50) COMMENT '创建人',
+    update_by VARCHAR(50) COMMENT '更新人',
+    is_deleted TINYINT DEFAULT 0 COMMENT '是否删除，0-未删除，1-已删除'
+) COMMENT='灵敏度配置表';
 
+-- 插入默认的高峰时段灵敏度配置
+INSERT INTO sensitivity_config (config_name, config_type, sensitivity_value, description) 
+VALUES ('高峰时段统计灵敏度', 'peak_hour_sensitivity', 0.15, '用于高峰时段统计算法的灵敏度参数，该配置可用于繁忙指数的权重配置和高峰时段灵敏度配置，范围均在0到1之间');
+-- 插入满载率告警阈值配置
+INSERT INTO sensitivity_config (config_name, config_type, sensitivity_value, description)
+VALUES ('满载率告警阈值', 'load_factor_threshold', 0.7, '列车满载率告警阈值，超过此值将触发告警，范围0到1之间');
 
+-- 插入繁忙指数权重 - 发送量配置
+INSERT INTO sensitivity_config (config_name, config_type, sensitivity_value, description)
+VALUES ('繁忙指数权重 - 发送量', 'busy_index_departure_weight', 0.4, '繁忙指数计算中发送量的权重，范围0到1之间');
+
+-- 插入繁忙指数权重 - 到达量配置
+INSERT INTO sensitivity_config (config_name, config_type, sensitivity_value, description)
+VALUES ('繁忙指数权重 - 到达量', 'busy_index_arrival_weight', 0.6, '繁忙指数计算中到达量的权重，范围0到1之间');
+
+-- 插入繁忙指数权重 - 中转量配置
+INSERT INTO sensitivity_config (config_name, config_type, sensitivity_value, description)
+VALUES ('繁忙指数权重 - 中转量', 'busy_index_transfer_weight', 0.0, '繁忙指数计算中中转量的权重，范围0到1之间');
