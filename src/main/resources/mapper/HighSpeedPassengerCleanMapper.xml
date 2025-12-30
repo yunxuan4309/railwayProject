@@ -1,6 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
 <mapper namespace="com.homework.railwayproject.mapper.HighSpeedPassengerCleanMapper">
+
+    <select id="countAllCleanData" resultType="java.lang.Long">
+        SELECT COUNT(*) 
+        FROM high_speed_passenger_clean 
+        WHERE is_deleted = 0
+    </select>
 
     <insert id="insertBatchSomeColumn" parameterType="java.util.List">
         INSERT INTO high_speed_passenger_clean (
@@ -34,48 +43,45 @@
             data_version,
             create_time,
             update_time,
-            create_by,
-            update_by,
             status,
             is_deleted
         ) VALUES
         <foreach collection="list" item="item" separator=",">
-        (
-            #{item.ticketId},
-            #{item.operationLineCode},
-            #{item.trainCode},
-            #{item.originalSiteId},
-            #{item.departStationId},
-            #{item.arriveStationId},
-            #{item.lineSiteId},
-            #{item.uplineCode},
-            #{item.travelDate},
-            #{item.departTime},
-            #{item.distanceSeq},
-            #{item.boardingCount},
-            #{item.alightingCount},
-            #{item.ticketPrice},
-            #{item.ticketType},
-            #{item.seatTypeCode},
-            #{item.trainCompanyCode},
-            #{item.startStationTelecode},
-            #{item.originStation},
-            #{item.endStationTelecode},
-            #{item.destStation},
-            #{item.trainLevelCode},
-            #{item.trainTypeCode},
-            #{item.ticketStation},
-            #{item.farthestArrivalStation},
-            #{item.ticketTime},
-            #{item.arrivalStation},
-            #{item.dataVersion},
-            #{item.createTime},
-            #{item.updateTime},
-            #{item.createBy},
-            #{item.updateBy},
-            #{item.status},
-            #{item.isDeleted}
-        )
+            (
+                #{item.ticketId},
+                #{item.operationLineCode},
+                #{item.trainCode},
+                #{item.originalSiteId},
+                #{item.departStationId},
+                #{item.arriveStationId},
+                #{item.lineSiteId},
+                #{item.uplineCode},
+                #{item.travelDate},
+                #{item.departTime},
+                #{item.distanceSeq},
+                #{item.boardingCount},
+                #{item.alightingCount},
+                #{item.ticketPrice},
+                #{item.ticketType},
+                #{item.seatTypeCode},
+                #{item.trainCompanyCode},
+                #{item.startStationTelecode},
+                #{item.originStation},
+                #{item.endStationTelecode},
+                #{item.destStation},
+                #{item.trainLevelCode},
+                #{item.trainTypeCode},
+                #{item.ticketStation},
+                #{item.farthestArrivalStation},
+                #{item.ticketTime},
+                #{item.arrivalStation},
+                #{item.dataVersion},
+                NOW(),
+                NOW(),
+                1,
+                0
+            )
         </foreach>
     </insert>
+
 </mapper>

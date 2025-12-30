@@ -1,0 +1,5 @@
+-- 清空原始数据表并重置自增值
+TRUNCATE TABLE high_speed_passenger;
+
+-- 清空清洗数据表并重置自增值
+TRUNCATE TABLE high_speed_passenger_clean;

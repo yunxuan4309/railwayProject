@@ -12,4 +12,11 @@ import java.util.List;
 @Mapper
 public interface HighSpeedPassengerCleanMapper extends BaseMapper<HighSpeedPassengerClean> {
     int insertBatchSomeColumn(List<HighSpeedPassengerClean> passengers);
+
+    /**
+     * 统计清洗表中的所有数据量
+     *
+     * @return 数据总条数
+     */
+    Long countAllCleanData();
 }

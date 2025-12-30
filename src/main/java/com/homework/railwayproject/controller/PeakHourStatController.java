@@ -22,7 +22,7 @@ import java.util.List;
  */
 @Slf4j
 @RestController
-@RequestMapping("/peak-hour-stat")
+@RequestMapping("/api/peak-hour-stat")
 @Tag(name = "高峰时段统计", description = "高峰时段统计相关API")
 public class PeakHourStatController {
     

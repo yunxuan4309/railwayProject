@@ -6,6 +6,9 @@ spring:
       max-file-size: 100MB        # 单个文件最大大小
       max-request-size: 100MB     # 整个请求最大大小
       enabled: true
+      # 增加超时配置
+      file-size-threshold: 10MB   # 文件大小阈值，超过此值将写入磁盘
+      location: /tmp              # 临时文件位置
 
   profiles:
     active: dev

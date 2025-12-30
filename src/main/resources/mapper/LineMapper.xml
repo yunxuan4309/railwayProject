@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.homework.railwayproject.mapper.LineMapper">
+
+    <select id="selectAllLines" resultType="com.homework.railwayproject.pojo.entity.Line">
+        SELECT
+            id,
+            line_code AS lineCode,
+            line_name AS lineName,
+            line_type AS lineType,
+            start_station_id AS startStationId,
+            end_station_id AS endStationId,
+            total_mileage AS totalMileage,
+            operation_status AS operationStatus,
+            create_time AS createTime,
+            update_time AS updateTime,
+            create_by AS createBy,
+            update_by AS updateBy,
+            status,
+            is_deleted AS isDeleted
+        FROM line
+        WHERE is_deleted = 0
+        ORDER BY line_code
+    </select>
+
+    <select id="countAllLines" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM line
+        WHERE is_deleted = 0
+    </select>
+
+</mapper>

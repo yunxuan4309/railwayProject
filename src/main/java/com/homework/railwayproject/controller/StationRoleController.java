@@ -21,7 +21,7 @@ import java.time.LocalDate;
  */
 @Slf4j
 @RestController
-@RequestMapping("/station-role")
+@RequestMapping("/api/station-role")
 @Tag(name = "站点角色", description = "站点角色分类相关API")
 public class StationRoleController {
 

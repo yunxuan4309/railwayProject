@@ -3,7 +3,9 @@ package com.homework.railwayproject.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.homework.railwayproject.mapper.HighSpeedPassengerMapper;
 import com.homework.railwayproject.mapper.HighSpeedPassengerCleanMapper;
+import com.homework.railwayproject.pojo.dto.CleaningResult;
 import com.homework.railwayproject.pojo.dto.ImportResult;
+import com.homework.railwayproject.pojo.dto.ProcessResult;
 import com.homework.railwayproject.pojo.entity.HighSpeedPassenger;
 import com.homework.railwayproject.pojo.entity.HighSpeedPassengerClean;
 import com.homework.railwayproject.service.HighSpeedPassengerImportService;
@@ -25,6 +27,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -49,49 +52,83 @@ public class HighSpeedPassengerImportServiceImpl implements HighSpeedPassengerIm
     public ImportResult importCsvData(MultipartFile file) {
         ImportResult result = new ImportResult();
         List<HighSpeedPassenger> passengerList = new ArrayList<>();
+        Set<Long> processedIds = new HashSet<>(); // 用于检测重复ID
 
         try {
             log.info("开始解析CSV文件，文件名: {}，大小: {} bytes",
                     file.getOriginalFilename(), file.getSize());
 
             List<Map<String, String>> csvData = parseCsvFile(file);
-            log.info("成功解析 {} 行数据", csvData.size());
+            log.info("成功解析 {} 行数据，开始导入处理", csvData.size());
 
             // 跳过数据验证步骤，直接进行转换
             // csvDataPreprocessor.validateCsvData(csvData);
 
-            log.info("跳过数据验证，直接进行数据转换");
-
             // 转换为实体对象
             int successCount = 0;
             int failCount = 0;
+            int duplicateCount = 0; // 重复记录计数
+            
+            // 设置进度日志间隔
+            int totalRows = csvData.size();
+            int logInterval = Math.max(1, totalRows / 10); // 每处理10%记录一次日志
 
             for (int i = 0; i < csvData.size(); i++) {
                 Map<String, String> row = csvData.get(i);
                 try {
                     HighSpeedPassenger passenger = convertToEntity(row);
-                    // 设置默认状态为0（未清洗）
-                    passenger.setStatus(0);
-                    passengerList.add(passenger);
-                    successCount++;
-
-                    // 记录前几行的转换结果用于调试
-                    if (i < 3) {
-                        log.debug("第{}行转换成功 - 序号: {}, 运行日期: {}",
-                                i + 3, row.get("序号"), row.get("运行日期"));
+                    Long currentId = passenger.getId();
+                    
+                    // 验证关键字段
+                    if (passenger.getOperationDate() == null) {
+                        log.warn("第{}行数据的运行日期为空，跳过此记录", i + 3); // +3因为跳过了前2行，且索引从0开始
+                        failCount++;
+                        continue; // 跳过此记录
                     }
+                    
+                    // 检查ID是否重复
+                    if (currentId != null && processedIds.contains(currentId)) {
+                        // ID重复，设置状态为3（重复数据）
+                        // 注意：虽然设置了状态为3，但在当前实现中，重复数据最终不会被插入数据库
+                        // 这是为了保持代码的灵活性，以备将来需要保留重复数据记录的场景
+                        passenger.setStatus(3);
+                        duplicateCount++;
+                    } else if (currentId != null && checkIdExistsInDatabase(currentId)) {
+                        // 检查数据库中是否已存在此ID
+                        // 注意：虽然设置了状态为3，但在当前实现中，重复数据最终不会被插入数据库
+                        // 这是为了保持代码的灵活性，以备将来需要保留重复数据记录的场景
+                        passenger.setStatus(3);
+                        duplicateCount++;
+                    } else {
+                        // 首次出现的ID，设置为未清洗状态
+                        passenger.setStatus(0);
+                        if (currentId != null) {
+                            processedIds.add(currentId);
+                        }
+                        successCount++;
+                    }
+                    
+                    // 重复数据（状态为3）和非重复数据（状态为0）都会被添加到待插入列表
+                    // 但在批量插入过程中，由于数据库约束或其他原因，重复数据可能无法成功插入
+                    // 这种设计保持了代码的灵活性，以备将来需要保留重复数据记录的场景
+                    passengerList.add(passenger);
+                    
+                    // 每隔一定数量记录输出一次进度
+                    if (i > 0 && i % logInterval == 0) {
+                        log.info("数据处理进度: {}/{} ({}%)", i, totalRows, (int)((double)i / totalRows * 100));
+                    }
+
                 } catch (Exception e) {
-                    log.warn("第{}行数据转换失败: {}", i + 3, e.getMessage());
                     failCount++;
                 }
             }
 
-            log.info("数据转换完成 - 成功: {} 行，失败: {} 行", successCount, failCount);
+            log.info("数据转换完成 - 成功: {} 行，失败: {} 行，重复: {} 行", successCount, failCount, duplicateCount);
 
             // 批量插入数据库
             int insertedCount = batchInsertPassengers(passengerList);
             result.setSuccessCount(insertedCount);
-            result.setFailedCount(failCount + (passengerList.size() - insertedCount));
+            result.setFailedCount(failCount + duplicateCount + (passengerList.size() - insertedCount));
 
             log.info("导入完成，成功插入: {} 条，总失败: {} 条",
                     result.getSuccessCount(), result.getFailedCount());
@@ -105,22 +142,38 @@ public class HighSpeedPassengerImportServiceImpl implements HighSpeedPassengerIm
     
     @Override
     @Transactional
-    public ImportResult cleanData(String filename) {
-        ImportResult result = new ImportResult();
+    public CleaningResult cleanData(String filename) {
+        CleaningResult result = new CleaningResult();
         
         try {
             log.info("开始数据清洗，文件名: {}", filename);
             
-            // 查询所有未清洗的原始数据（status = 0）
+            // 查询所有未清洗的原始数据（status = 0）和跳过的重复数据（status = 3）
+            // 注意：在当前实现中，由于重复数据在导入阶段通常不会被插入数据库，
+            // 所以这里查询到的status=3的数据通常为0
             QueryWrapper<HighSpeedPassenger> queryWrapper = new QueryWrapper<>();
-            queryWrapper.eq("status", 0);
+            queryWrapper.in("status", 0, 3); // 包含未清洗和重复数据
             List<HighSpeedPassenger> rawDataList = highSpeedPassengerMapper.selectList(queryWrapper);
-            log.info("查询到 {} 条未清洗的原始数据", rawDataList.size());
+            log.info("查询到 {} 条原始数据（包含未清洗和重复数据）", rawDataList.size());
             
-            if (rawDataList.isEmpty()) {
+            // 分离不同状态的数据
+            List<HighSpeedPassenger> toProcessList = rawDataList.stream()
+                .filter(p -> p.getStatus() == 0) // 未清洗的数据
+                .collect(Collectors.toList());
+            
+            int skippedCount = (int) rawDataList.stream()
+                .filter(p -> p.getStatus() == 3) // 重复数据
+                .count();
+            
+            log.info("需要处理的未清洗数据: {} 条，跳过的重复数据: {} 条", toProcessList.size(), skippedCount);
+            
+            if (toProcessList.isEmpty()) {
                 log.info("没有需要清洗的数据");
+                result.setTotalProcessed(0);
                 result.setSuccessCount(0);
                 result.setFailedCount(0);
+                result.setSkippedCount(skippedCount);
+                result.setMessage("没有需要清洗的数据");
                 return result;
             }
             
@@ -128,19 +181,30 @@ public class HighSpeedPassengerImportServiceImpl implements HighSpeedPassengerIm
             String version = generateVersion(filename);
             
             // 按照清洗规则进行数据清洗
-            List<HighSpeedPassengerClean> cleanDataList = processDataCleaning(rawDataList, version);
-            log.info("清洗后得到 {} 条数据", cleanDataList.size());
+            ProcessResult processResult = processDataCleaning(toProcessList, version);
+            List<HighSpeedPassengerClean> cleanDataList = processResult.getCleanDataList();
+            int incompleteBatches = processResult.getIncompleteBatches();
+            
+            log.info("清洗后得到 {} 条数据，不完整批次: {} 个", cleanDataList.size(), incompleteBatches);
             
             // 批量插入清洗后的数据
             int insertedCount = batchInsertCleanPassengers(cleanDataList);
+            int failedCount = cleanDataList.size() - insertedCount;
+            
+            // 只更新未清洗数据的状态为已清洗（status = 1），保留重复数据的状态（status = 3）
+            updateRawDataStatus(toProcessList);
+            
+            // 设置结果统计
+            result.setTotalProcessed(toProcessList.size());
             result.setSuccessCount(insertedCount);
-            result.setFailedCount(cleanDataList.size() - insertedCount);
+            result.setFailedCount(failedCount);
+            result.setSkippedCount(skippedCount);
+            result.setIncompleteBatches(incompleteBatches);
+            result.setMessage(String.format("清洗完成，处理了 %d 条原始数据，成功清洗 %d 条，失败 %d 条，跳过 %d 条重复数据，处理了 %d 个不完整批次", 
+                toProcessList.size(), insertedCount, failedCount, skippedCount, incompleteBatches));
             
-            // 更新原始数据的状态为已清洗（status = 1）
-            updateRawDataStatus(rawDataList);
-            
-            log.info("清洗完成，成功插入: {} 条，总失败: {} 条",
-                    result.getSuccessCount(), result.getFailedCount());
+            log.info("清洗完成，成功插入: {} 条，失败: {} 条，跳过: {} 条，不完整批次: {} 个",
+                    result.getSuccessCount(), result.getFailedCount(), result.getSkippedCount(), result.getIncompleteBatches());
                     
             return result;
         } catch (Exception e) {
@@ -155,11 +219,35 @@ public class HighSpeedPassengerImportServiceImpl implements HighSpeedPassengerIm
      * @param rawDataList 原始数据列表
      */
     private void updateRawDataStatus(List<HighSpeedPassenger> rawDataList) {
+        int updatedCount = 0;
+        
+        // 收集所有需要更新的数据ID，然后批量更新状态
+        List<Long> idsToBeUpdated = new ArrayList<>();
         for (HighSpeedPassenger passenger : rawDataList) {
-            passenger.setStatus(1);
-            highSpeedPassengerMapper.updateById(passenger);
+            // 只更新状态为0（未清洗）的数据为1（已清洗），保留状态为3（重复）的数据不变
+            // 注意：在当前实现中，rawDataList参数通常只包含status=0的数据，
+            // 因为在调用此方法前已经通过filter筛选了status=0的数据
+            if (passenger.getStatus() == 0) {
+                idsToBeUpdated.add(passenger.getId());
+            }
         }
-        log.info("已更新 {} 条原始数据的状态为已清洗", rawDataList.size());
+        
+        if (!idsToBeUpdated.isEmpty()) {
+            // 分批更新状态，避免单次操作数据量过大导致连接超时
+            int batchSize = 5000; // 每批处理5000条记录
+            for (int i = 0; i < idsToBeUpdated.size(); i += batchSize) {
+                int endIndex = Math.min(i + batchSize, idsToBeUpdated.size());
+                List<Long> batchIds = idsToBeUpdated.subList(i, endIndex);
+                int batchUpdated = highSpeedPassengerMapper.updateStatusInBatch(batchIds, 1);
+                updatedCount += batchUpdated;
+                
+                // 记录批次处理进度
+                log.info("批量更新状态进度: {}/{} 批次完成", endIndex / batchSize + 1, 
+                         (int) Math.ceil((double) idsToBeUpdated.size() / batchSize));
+            }
+        }
+        
+        log.info("已更新 {} 条原始数据的状态为已清洗", updatedCount);
     }
     
     /**
@@ -187,14 +275,23 @@ public class HighSpeedPassengerImportServiceImpl implements HighSpeedPassengerIm
     
     /**
      * 处理数据清洗逻辑
-     * 根据规则：4条原始记录合并为1条清洗后记录
+     * 根据方案四：混合策略
+     * 1. 优先4合1处理：对于能明确构成完整行程的4条记录，按现有逻辑处理
+     * 2. 剩余记录处理：对于剩余的1-3条记录，根据其包含的信息类型（上车/下车/其他）生成清洗记录
+     * 3. 保留所有原始数据，不丢弃任何记录
+     * 
+     * 注意：
+     * - 在4合1处理中，系统查找boardingCount > 0的记录作为上车站点，alightingCount > 0的记录作为下车站点
+     * - 在部分批次处理中，所有记录都会被转换，不管其boardingCount或alightingCount是否为0
+     * - 这样确保了所有原始数据都被处理，避免数据丢失
      * 
      * @param rawDataList 原始数据列表
      * @param version 版本号
-     * @return 清洗后数据列表
+     * @return 清洗后数据列表和不完整批次数量
      */
-    private List<HighSpeedPassengerClean> processDataCleaning(List<HighSpeedPassenger> rawDataList, String version) {
+    private ProcessResult processDataCleaning(List<HighSpeedPassenger> rawDataList, String version) {
         List<HighSpeedPassengerClean> cleanDataList = new ArrayList<>();
+        int incompleteBatches = 0; // 记录不完整批次数量
         
         // 按列车编码和运行日期分组
         Map<String, List<HighSpeedPassenger>> groupedData = new HashMap<>();
@@ -208,21 +305,123 @@ public class HighSpeedPassengerImportServiceImpl implements HighSpeedPassengerIm
             List<HighSpeedPassenger> group = entry.getValue();
             
             // 按照4条记录为一组进行处理
-            for (int i = 0; i < group.size(); i += 4) {
+            int i = 0;
+            while (i < group.size()) {
                 int endIndex = Math.min(i + 4, group.size());
                 List<HighSpeedPassenger> batch = group.subList(i, endIndex);
                 
-                // 确保至少有4条记录才能处理
                 if (batch.size() == 4) {
+                    // 优先4合1处理：对于完整的4条记录
                     HighSpeedPassengerClean cleanPassenger = convertToCleanEntity(batch, version);
                     cleanDataList.add(cleanPassenger);
                 } else {
-                    log.warn("数据不完整，跳过处理。需要4条记录，实际只有 {} 条", batch.size());
+                    // 剩余记录处理：对于1-3条的不完整批次
+                    List<HighSpeedPassengerClean> partialCleanData = processPartialBatch(batch, version);
+                    cleanDataList.addAll(partialCleanData);
+                    incompleteBatches++; // 记录不完整批次
+                    log.debug("处理不完整批次，包含 {} 条记录", batch.size());
                 }
+                
+                i += 4; // 移动到下一组
+            }
+        }
+        
+        ProcessResult result = new ProcessResult();
+        result.setCleanDataList(cleanDataList);
+        result.setIncompleteBatches(incompleteBatches);
+        
+        return result;
+    }
+    
+    /**
+     * 处理部分批次（1-3条记录）
+     * 根据记录中的信息类型（上车/下车/其他）生成清洗记录
+     * 
+     * @param batch 部分批次记录（1-3条）
+     * @param version 版本号
+     * @return 清洗后的记录列表
+     */
+    private List<HighSpeedPassengerClean> processPartialBatch(List<HighSpeedPassenger> batch, String version) {
+        List<HighSpeedPassengerClean> cleanDataList = new ArrayList<>();
+        
+        // 对于部分批次，每条记录都可能生成一条清洗记录
+        for (HighSpeedPassenger record : batch) {
+            HighSpeedPassengerClean cleanPassenger = convertPartialRecordToCleanEntity(record, version);
+            if (cleanPassenger != null) {
+                cleanDataList.add(cleanPassenger);
             }
         }
         
         return cleanDataList;
+    }
+    
+    /**
+     * 将单条原始记录转换为清洗后的记录（用于部分批次）
+     * 
+     * @param record 单条原始记录
+     * @param version 版本号
+     * @return 清洗后的记录
+     */
+    private HighSpeedPassengerClean convertPartialRecordToCleanEntity(HighSpeedPassenger record, String version) {
+        HighSpeedPassengerClean cleanPassenger = new HighSpeedPassengerClean();
+        
+        // 生成ticketId: 列车编码_运行日期_原始ID
+        if (record.getOperationDate() == null) {
+            log.error("数据记录中运行日期为空，无法生成ticketId，记录ID: {}", record.getId());
+            throw new IllegalArgumentException("数据记录中运行日期为空，文件格式错误");
+        }
+        String ticketId = record.getTrainCode() + "_" + record.getOperationDate().toString().replace("-", "") + "_" + record.getId();
+        cleanPassenger.setTicketId(ticketId);
+        
+        // 直接复制的字段
+        cleanPassenger.setOperationLineCode(record.getLineCode());
+        cleanPassenger.setTrainCode(record.getTrainCode());
+        cleanPassenger.setLineSiteId(record.getLineSiteId());
+        cleanPassenger.setUplineCode(record.getUplineCode());
+        cleanPassenger.setTravelDate(record.getOperationDate());
+        cleanPassenger.setDistanceSeq(record.getDistanceOrder());
+        cleanPassenger.setTicketPrice(record.getTicketPrice());
+        cleanPassenger.setTicketType(record.getTicketType());
+        cleanPassenger.setSeatTypeCode(record.getSeatTypeCode());
+        cleanPassenger.setTrainCompanyCode(record.getTrainCompanyCode());
+        cleanPassenger.setStartStationTelecode(record.getStartStationTelecode());
+        cleanPassenger.setOriginStation(record.getStartStation());
+        cleanPassenger.setEndStationTelecode(record.getEndStationTelecode());
+        cleanPassenger.setDestStation(record.getEndStation());
+        cleanPassenger.setTrainLevelCode(record.getTrainLevelCode());
+        cleanPassenger.setTrainTypeCode(record.getTrainTypeCode());
+        cleanPassenger.setTicketStation(record.getTicketStation());
+        cleanPassenger.setFarthestArrivalStation(record.getFarthestArrivalStation());
+        cleanPassenger.setTicketTime(record.getTicketTime());
+        cleanPassenger.setArrivalStation(record.getArrivalStation());
+        cleanPassenger.setDataVersion(version);
+        cleanPassenger.setOriginalSiteId(record.getSiteId());
+        
+        // 解析运行时间为标准时间格式
+        if (record.getOperationTime() != null && !record.getOperationTime().isEmpty()) {
+            try {
+                int timeValue = Integer.parseInt(record.getOperationTime());
+                int hour = timeValue / 100;
+                int minute = timeValue % 100;
+                cleanPassenger.setDepartTime(LocalTime.of(hour, minute));
+            } catch (NumberFormatException e) {
+                log.warn("无法解析运行时间: {}", record.getOperationTime());
+            }
+        }
+        
+        // 设置站点信息，基于当前记录
+        cleanPassenger.setDepartStationId(record.getSiteId());
+        cleanPassenger.setArriveStationId(record.getSiteId());
+        cleanPassenger.setBoardingCount(record.getBoardingCount());
+        cleanPassenger.setAlightingCount(record.getAlightingCount());
+        
+        // 设置默认字段值以确保数据完整性
+        cleanPassenger.setCreateTime(java.time.LocalDateTime.now());  // 创建时间为当前时间
+        cleanPassenger.setUpdateTime(java.time.LocalDateTime.now());  // 更新时间为当前时间
+        cleanPassenger.setStatus(1);                                  // 状态默认为1（有效）
+        cleanPassenger.setIsDeleted(0);                               // 是否删除默认为0（未删除）
+        
+        return cleanPassenger;
     }
     
     /**
@@ -240,6 +439,10 @@ public class HighSpeedPassengerImportServiceImpl implements HighSpeedPassengerIm
         
         // 生成ticketId: 列车编码_运行日期_归一化序列
         long normalizedSequence = firstRecord.getId() / 4;
+        if (firstRecord.getOperationDate() == null) {
+            log.error("数据记录中运行日期为空，无法生成ticketId，记录ID: {}", firstRecord.getId());
+            throw new IllegalArgumentException("数据记录中运行日期为空，文件格式错误");
+        }
         String ticketId = firstRecord.getTrainCode() + "_" + firstRecord.getOperationDate().toString().replace("-", "") + "_" + normalizedSequence;
         cleanPassenger.setTicketId(ticketId);
         
@@ -302,12 +505,21 @@ public class HighSpeedPassengerImportServiceImpl implements HighSpeedPassengerIm
             cleanPassenger.setAlightingCount(alightingRecord.getAlightingCount());
         }
         
+        // 设置默认字段值以确保数据完整性
+        cleanPassenger.setCreateTime(java.time.LocalDateTime.now());  // 创建时间为当前时间
+        cleanPassenger.setUpdateTime(java.time.LocalDateTime.now());  // 更新时间为当前时间
+        cleanPassenger.setStatus(1);                                  // 状态默认为1（有效）
+        cleanPassenger.setIsDeleted(0);                               // 是否删除默认为0（未删除）
+        
         return cleanPassenger;
     }
     
     private int batchInsertCleanPassengers(List<HighSpeedPassengerClean> passengers) {
-        int batchSize = 2000;
+        int batchSize = 1000; // 减小批量大小以减少内存使用
         int totalInserted = 0;
+        int totalBatches = (int) Math.ceil((double) passengers.size() / batchSize);
+        
+        log.info("开始批量插入清洗数据 {} 条，分为 {} 个批次", passengers.size(), totalBatches);
 
         for (int i = 0; i < passengers.size(); i += batchSize) {
             int endIndex = Math.min(i + batchSize, passengers.size());
@@ -315,12 +527,20 @@ public class HighSpeedPassengerImportServiceImpl implements HighSpeedPassengerIm
             try {
                 int insertedCount = highSpeedPassengerCleanMapper.insertBatchSomeColumn(batch);
                 totalInserted += insertedCount;
+                
+                // 每完成10个批次输出一次进度
+                int currentBatch = (i / batchSize) + 1;
+                if (currentBatch % 10 == 0 || currentBatch == totalBatches) {
+                    log.info("清洗数据批量插入进度: {}/{} 批次完成", currentBatch, totalBatches);
+                }
             } catch (Exception e) {
-                log.error("批次插入失败，尝试单条插入", e);
+                log.warn("清洗数据批次插入失败，尝试单条插入");
                 // 失败时尝试单条插入
                 totalInserted += retrySingleCleanInsert(batch);
             }
         }
+        
+        log.info("清洗数据批量插入完成，成功插入: {} 条", totalInserted);
         return totalInserted;
     }
     
@@ -331,15 +551,18 @@ public class HighSpeedPassengerImportServiceImpl implements HighSpeedPassengerIm
                 highSpeedPassengerCleanMapper.insert(passenger);
                 successCount++;
             } catch (Exception e) {
-                log.warn("单条插入失败: {}", passenger.getTicketId());
+                // 避免输出过多日志，仅记录错误数量
             }
         }
         return successCount;
     }
 
     private int batchInsertPassengers(List<HighSpeedPassenger> passengers) {
-        int batchSize = 2000;
+        int batchSize = 1000; // 减小批量大小以减少内存使用
         int totalInserted = 0;
+        int totalBatches = (int) Math.ceil((double) passengers.size() / batchSize);
+        
+        log.info("开始批量插入 {} 条记录，分为 {} 个批次", passengers.size(), totalBatches);
 
         for (int i = 0; i < passengers.size(); i += batchSize) {
             int endIndex = Math.min(i + batchSize, passengers.size());
@@ -347,15 +570,23 @@ public class HighSpeedPassengerImportServiceImpl implements HighSpeedPassengerIm
             try {
                 int insertedCount = highSpeedPassengerMapper.insertBatchSomeColumn(batch);
                 totalInserted += insertedCount;
+                
+                // 每完成10个批次输出一次进度
+                int currentBatch = (i / batchSize) + 1;
+                if (currentBatch % 10 == 0 || currentBatch == totalBatches) {
+                    log.info("批量插入进度: {}/{} 批次完成", currentBatch, totalBatches);
+                }
             } catch (Exception e) {
-                log.error("批次插入失败，尝试单条插入", e);
+                log.warn("批次插入失败，尝试单条插入");
                 // 失败时尝试单条插入
                 totalInserted += retrySingleInsert(batch);
             }
         }
+        
+        log.info("批量插入完成，成功插入: {} 条", totalInserted);
         return totalInserted;
     }
-
+    
     private int retrySingleInsert(List<HighSpeedPassenger> batch) {
         int successCount = 0;
         for (HighSpeedPassenger passenger : batch) {
@@ -363,7 +594,7 @@ public class HighSpeedPassengerImportServiceImpl implements HighSpeedPassengerIm
                 highSpeedPassengerMapper.insert(passenger);
                 successCount++;
             } catch (Exception e) {
-                log.warn("单条插入失败: {}", passenger.getId());
+                // 避免输出过多日志，仅记录错误数量
             }
         }
         return successCount;
@@ -374,23 +605,28 @@ public class HighSpeedPassengerImportServiceImpl implements HighSpeedPassengerIm
         // 自动检测文件编码
         Charset charset = detectCharset(file);
         log.info("检测到文件编码: {}", charset.name());
+        
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream()))) {
             String line;
             boolean isFirstLine = true;
             int lineNumber = 0;
             String[] headers = null;
+            
+            // 仅记录前几行和进度
+            int totalLines = 0;
+            String[] lines = file.getInputStream().readAllBytes().toString().split("\n");
+            
             while ((line = reader.readLine()) != null) {
                 lineNumber++;
 
                 // 第1行：跳过（无关信息）
                 if (lineNumber == 1) {
-                    log.info("跳过第1行（文件说明）: {}", line);
-                    continue;
+                    continue; // 不再记录跳过信息
                 }
                 // 第2行：解析为列名/表头
                 if (lineNumber == 2) {
                     headers = parseCsvLine(line);
-                    log.info("解析到表头，共 {} 列: {}", headers.length, Arrays.toString(headers));
+                    log.info("解析到表头，共 {} 列", headers.length);
                     continue;
                 }
                 // 第3行及以后：解析为数据
@@ -398,14 +634,11 @@ public class HighSpeedPassengerImportServiceImpl implements HighSpeedPassengerIm
                     throw new IOException("未找到表头行");
                 }
 
-
                 // 使用更健壮的CSV解析
                 String[] values = parseCsvLine(line);
                 if (values.length < headers.length) {
-                    log.warn("第{}行数据字段数量不足，期望: {}, 实际: {}", lineNumber, headers.length, values.length);
-                    // 可以继续处理，用空值填充缺失的字段
+                    // 不再记录每行的字段不足警告，避免日志过多
                 }
-
 
                 Map<String, String> row = new HashMap<>();
                 for (int i = 0; i < headers.length; i++) {
@@ -418,13 +651,18 @@ public class HighSpeedPassengerImportServiceImpl implements HighSpeedPassengerIm
                 }
                 result.add(row);
 
-                // 记录前几行数据用于调试
-                if (lineNumber <= 5) {
+                // 仅记录前几行数据用于调试
+                if (lineNumber <= 3) {
                     log.debug("第{}行数据示例: {}", lineNumber, row);
+                }
+                
+                // 每处理10000行记录一次进度
+                if (lineNumber % 10000 == 0) {
+                    log.info("CSV解析进度: {} 行已处理", lineNumber);
                 }
             }
 
-            log.info("共解析 {} 行数据（从第3行到第{}行）", result.size(), lineNumber);
+            log.info("共解析 {} 行数据", result.size());
         }
         return result;
     }
@@ -659,4 +897,10 @@ public class HighSpeedPassengerImportServiceImpl implements HighSpeedPassengerIm
         return text.contains("") || text.contains("ï»¿") || text.matches(".*[\\u0000-\\u001F\\u007F-\\u009F].*");
     }
 
+    /**
+     * 检查ID是否已存在于数据库中
+     */
+    private boolean checkIdExistsInDatabase(Long id) {
+        return highSpeedPassengerMapper.selectById(id) != null;
+    }
 }

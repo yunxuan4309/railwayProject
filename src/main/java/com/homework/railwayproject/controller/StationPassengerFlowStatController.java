@@ -18,7 +18,7 @@ import java.util.List;
  */
 @Slf4j
 @RestController
-@RequestMapping("/station-passenger-flow-stat")
+@RequestMapping("/api/station-passenger-flow-stat")
 @Tag(name = "站点客流统计", description = "站点客流统计相关API")
 public class StationPassengerFlowStatController {
     

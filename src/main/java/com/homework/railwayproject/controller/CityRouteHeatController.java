@@ -22,7 +22,7 @@ import java.util.List;
  */
 @Slf4j
 @RestController
-@RequestMapping("/city-route-heat")
+@RequestMapping("/api/city-route-heat")
 @Tag(name = "城市路线热度", description = "城市间客流热度分析API")
 public class CityRouteHeatController {
     

@@ -21,7 +21,7 @@ import java.util.List;
  */
 @Slf4j
 @RestController
-@RequestMapping("/busy-index-stat")
+@RequestMapping("/api/busy-index-stat")
 @Tag(name = "站点繁忙指数统计", description = "站点繁忙指数统计相关API")
 public class BusyIndexStatController {
 
