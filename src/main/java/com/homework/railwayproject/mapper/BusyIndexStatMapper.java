@@ -5,7 +5,6 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -21,8 +20,9 @@ public interface BusyIndexStatMapper {
      * @param endTime 结束时间
      * @return 繁忙指数统计列表
      */
-    List<BusyIndexStat> selectTop20BusyIndexStations(@Param("startTime") LocalDateTime startTime,
-                                                     @Param("endTime") LocalDateTime endTime);
+    List<BusyIndexStat> selectTop20BusyIndexStations(@Param("startTime") LocalDate startTime,
+                                                     @Param("endTime") LocalDate endTime,
+                                                     @Param("defaultSensitivity") double defaultSensitivity);
 
     /**
      * 查询指定站点指定时间段的繁忙指数
@@ -31,5 +31,5 @@ public interface BusyIndexStatMapper {
      * @param endTime
      * @return
      */
-    BusyIndexStat selectBusyIndexStatByIdAndTime(@Param("siteId") Integer siteId, @Param("startTime") LocalDate startTime, @Param("endTime") LocalDate endTime);
+    BusyIndexStat selectBusyIndexStatByIdAndTime(@Param("siteId") Integer siteId, @Param("startTime") LocalDate startTime, @Param("endTime") LocalDate endTime, @Param("defaultSensitivity") double defaultSensitivity);
 }

@@ -35,11 +35,13 @@ public class BusyIndexStatController {
      */
     @GetMapping("/top20")
     @Operation(summary = "获取站点繁忙指数前20名", description = "获取站点繁忙指数前20名")
-    public JsonResult<List<BusyIndexStat>> getTop20BusyIndexStations() {
-        List<BusyIndexStat> list = busyIndexStatService.getTop20BusyIndexStations();
+    public JsonResult<List<BusyIndexStat>> getTop20BusyIndexStations(
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startTime,
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endTime) {
+        List<BusyIndexStat> list = busyIndexStatService.getTop20BusyIndexStations(startTime, endTime);
         return JsonResult.ok(list);
     }
-//传入站点id和 时间startTime和endTime
+    //传入站点id和 时间startTime和endTime
     @GetMapping("/by-id-and-time")
     @Operation(summary = "获取站点繁忙指数", description = "获取站点繁忙指数")
     public JsonResult<BusyIndexStat> getBusyIndexStatByIdAndTime(@RequestParam Integer siteId,@RequestParam

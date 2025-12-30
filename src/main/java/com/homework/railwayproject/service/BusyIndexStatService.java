@@ -15,7 +15,7 @@ public interface BusyIndexStatService {
      *
      * @return 站点繁忙指数统计列表
      */
-    List<BusyIndexStat> getTop20BusyIndexStations();
+    List<BusyIndexStat> getTop20BusyIndexStations(LocalDate startTime, LocalDate endTime);
 
     /**
      * 定时任务：统计并缓存站点繁忙指数数据
