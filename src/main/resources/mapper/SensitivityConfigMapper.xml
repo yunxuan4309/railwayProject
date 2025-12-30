@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.homework.railwayproject.mapper.SensitivityConfigMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="SensitivityConfigResultMap" type="com.homework.railwayproject.pojo.entity.SensitivityConfig">
+        <id property="id" column="id"/>
+        <result property="configName" column="config_name"/>
+        <result property="configType" column="config_type"/>
+        <result property="sensitivityValue" column="sensitivity_value"/>
+        <result property="description" column="description"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="createBy" column="create_user"/>
+        <result property="updateBy" column="update_user"/>
+        <result property="isDeleted" column="is_deleted"/>
+    </resultMap>
+
+    <!-- 根据配置类型查询灵敏度配置 -->
+    <select id="selectByConfigType" resultMap="SensitivityConfigResultMap">
+        SELECT id, config_name, config_type, sensitivity_value, description, create_time, update_time, create_user as create_by, update_user as update_by, is_deleted
+        FROM sensitivity_config
+        WHERE config_type = #{configType} AND is_deleted = 0
+        LIMIT 1
+    </select>
+
+    <!-- 根据配置类型更新灵敏度值 -->
+    <update id="updateSensitivityByConfigType">
+        UPDATE sensitivity_config
+        SET sensitivity_value = #{sensitivityValue}, update_time = NOW(), update_user = 'system'
+        WHERE config_type = #{configType} AND is_deleted = 0
+    </update>
+
+</mapper>

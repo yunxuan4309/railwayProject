@@ -3,6 +3,7 @@ package com.homework.railwayproject.service.impl;
 import com.homework.railwayproject.mapper.PeakHourStatMapper;
 import com.homework.railwayproject.pojo.entity.PeakHourStat;
 import com.homework.railwayproject.service.PeakHourStatService;
+import com.homework.railwayproject.service.SensitivityConfigService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -21,6 +22,9 @@ public class PeakHourStatServiceImpl implements PeakHourStatService {
     @Autowired
     private PeakHourStatMapper peakHourStatMapper;
     
+    @Autowired
+    private SensitivityConfigService sensitivityConfigService;
+    
     @Override
     public List<PeakHourStat> getPeakHours(LocalDate date) {
         return peakHourStatMapper.selectHourlyStatByDate(date);
@@ -28,7 +32,8 @@ public class PeakHourStatServiceImpl implements PeakHourStatService {
     
     @Override
     public List<PeakHourStat> getTop3ConsecutivePeakHours(LocalDate date) {
-        return getTop3ConsecutivePeakHours(date, 0.15); // 默认灵敏度15%
+        Double defaultSensitivity = sensitivityConfigService.getPeakHourSensitivity();
+        return getTop3ConsecutivePeakHours(date, defaultSensitivity); // 使用数据库中的默认灵敏度
     }
     
     /**
