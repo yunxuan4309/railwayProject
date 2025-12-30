@@ -14,6 +14,11 @@ spring:
     active: dev
   jackson:
     default-property-inclusion: non_null
+  data:
+    redis:
+      timeout: 2000ms
+      port: 6379
+      host: localhost
 mybatis-plus:
   check-config-location: true
   mapper-locations: classpath*:/mapper/**/*.xml

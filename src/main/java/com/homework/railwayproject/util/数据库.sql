@@ -124,6 +124,9 @@ create index idx_train_code
 
 create index idx_travel_date
     on high_speed_passenger_clean (travel_date);
+
+create index idx_original_site_id
+    on high_speed_passenger_clean (original_site_id);
 create table line
 (
     id               bigint auto_increment comment '主键ID'
@@ -292,3 +295,6 @@ VALUES ('繁忙指数权重 - 到达量', 'busy_index_arrival_weight', 0.6, '繁
 -- 插入繁忙指数权重 - 中转量配置
 INSERT INTO sensitivity_config (config_name, config_type, sensitivity_value, description)
 VALUES ('繁忙指数权重 - 中转量', 'busy_index_transfer_weight', 0.0, '繁忙指数计算中中转量的权重，范围0到1之间');
+
+-- 为high_speed_passenger_clean表添加复合索引
+CREATE INDEX idx_travel_date_time_site ON high_speed_passenger_clean(travel_date, depart_time, original_site_id);
