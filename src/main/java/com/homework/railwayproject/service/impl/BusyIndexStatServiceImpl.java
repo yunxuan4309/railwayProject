@@ -6,6 +6,8 @@ import com.homework.railwayproject.service.BusyIndexStatService;
 import com.homework.railwayproject.service.SensitivityConfigService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -22,13 +24,36 @@ public class BusyIndexStatServiceImpl implements BusyIndexStatService {
     private BusyIndexStatMapper busyIndexStatMapper;
     @Autowired
     private SensitivityConfigService sensitivityConfigService;
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate;
     @Override
     public List<BusyIndexStat> getTop20BusyIndexStations(LocalDate startTime, LocalDate endTime) {
 
+        // 验证参数
+        if (startTime == null || endTime == null) {
+            throw new IllegalArgumentException("开始日期和结束日期不能为空");
+        }
+        if (startTime.isAfter(endTime)) {
+            throw new IllegalArgumentException("开始日期不能晚于结束日期");
+        }
+        // 生成缓存key
+        String cacheKey = "Busy-top20" + startTime + ":" + endTime;
+
+        // 尝试从缓存获取
+        ValueOperations<String, Object> ops = redisTemplate.opsForValue();
+        List<BusyIndexStat> cachedList = (List<BusyIndexStat>) ops.get(cacheKey);
+        if (cachedList != null) {
+            log.debug("从缓存获取站点客流统计: {}", cacheKey);
+            return cachedList;
+        }
         Double defaultSensitivity = sensitivityConfigService.getPeakHourSensitivity();
+        // 缓存未命中，查询数据库
+        List<BusyIndexStat> list = busyIndexStatMapper.selectTop20BusyIndexStations(startTime, endTime, defaultSensitivity);
 
+        // 存入缓存，有效期2小时
+        ops.set(cacheKey, list, 2, java.util.concurrent.TimeUnit.HOURS);
 
-        return busyIndexStatMapper.selectTop20BusyIndexStations(startTime, endTime, defaultSensitivity);
+        return list;
     }
 
     @Override
