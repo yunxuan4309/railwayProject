@@ -79,8 +79,8 @@ public class TicketQueryServiceImpl extends ServiceImpl<HighSpeedPassengerCleanM
             HighSpeedPassengerClean::getTicketPrice
         );
 
-        Integer current = queryDTO.getCurrent() != null ? queryDTO.getCurrent() : 1;
-        Integer size = queryDTO.getSize() != null ? queryDTO.getSize() : 10;
+        Integer current = queryDTO.getCurrent() != null ? queryDTO.getCurrent() : Integer.valueOf(1);
+        Integer size = queryDTO.getSize() != null ? queryDTO.getSize() : Integer.valueOf(10);
         Page<HighSpeedPassengerClean> page = new Page<>(current, size);
 
         IPage<HighSpeedPassengerClean> result = page(page, wrapper);

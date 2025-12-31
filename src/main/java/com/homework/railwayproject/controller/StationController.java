@@ -3,6 +3,9 @@ package com.homework.railwayproject.controller;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.homework.railwayproject.exception.ServiceException;
+import com.homework.railwayproject.pojo.dto.StationLevelStatDTO;
+import com.homework.railwayproject.pojo.dto.StationLevelValidateDTO;
+import com.homework.railwayproject.pojo.dto.StationLevelValidateResultDTO;
 import com.homework.railwayproject.pojo.entity.Station;
 import com.homework.railwayproject.service.StationService;
 import com.homework.railwayproject.web.JsonResult;
@@ -98,6 +101,47 @@ public class StationController {
             return JsonResult.ok(true);
         } catch (Exception e) {
             log.error("删除站点失败", e);
+            return JsonResult.fail(new ServiceException(ServiceCode.ERROR_UNKNOWN, e.getMessage()));
+        }
+    }
+
+    @GetMapping("/levelStat")
+    @Operation(summary = "查询站点等级统计", description = "统计所有站点的等级分布情况")
+    public JsonResult<StationLevelStatDTO> getStationLevelStat() {
+        try {
+            StationLevelStatDTO stat = stationService.getStationLevelStat();
+            return JsonResult.ok(stat);
+        } catch (Exception e) {
+            log.error("查询站点等级统计失败", e);
+            return JsonResult.fail(new ServiceException(ServiceCode.ERROR_UNKNOWN, e.getMessage()));
+        }
+    }
+
+    @PostMapping("/validateLevel")
+    @Operation(summary = "验证站点等级格式", description = "验证站点等级是否符合格式要求（特级、一级、二级、三级、四级、五级）")
+    public JsonResult<StationLevelValidateResultDTO> validateStationLevel(@RequestBody StationLevelValidateDTO validateDTO) {
+        try {
+            StationLevelValidateResultDTO result = stationService.validateStationLevel(validateDTO);
+            return JsonResult.ok(result);
+        } catch (Exception e) {
+            log.error("验证站点等级失败", e);
+            return JsonResult.fail(new ServiceException(ServiceCode.ERROR_UNKNOWN, e.getMessage()));
+        }
+    }
+
+    @GetMapping("/validateLevel")
+    @Operation(summary = "验证站点等级格式（GET）", description = "验证站点等级是否符合格式要求，通过URL参数传递")
+    public JsonResult<StationLevelValidateResultDTO> validateStationLevelByGet(
+            @Parameter(description = "站点ID") @RequestParam Integer siteId,
+            @Parameter(description = "站点等级") @RequestParam String stationLevel) {
+        try {
+            StationLevelValidateDTO validateDTO = new StationLevelValidateDTO();
+            validateDTO.setSiteId(siteId);
+            validateDTO.setStationLevel(stationLevel);
+            StationLevelValidateResultDTO result = stationService.validateStationLevel(validateDTO);
+            return JsonResult.ok(result);
+        } catch (Exception e) {
+            log.error("验证站点等级失败", e);
             return JsonResult.fail(new ServiceException(ServiceCode.ERROR_UNKNOWN, e.getMessage()));
         }
     }
