@@ -11,7 +11,7 @@
             sub.startTime,
             DATE_FORMAT(ADDTIME(sub.startTime, '1:00:00'), '%H:00:00') AS endTime,
             SUM(sub.boarding_count + sub.alighting_count) AS passengerCount,
-            FALSE AS isPeak
+            NULL AS isPeak
         FROM (
                  SELECT
                      DATE_FORMAT(depart_time, '%H:00:00') AS startTime,
@@ -67,4 +67,22 @@
         LIMIT 1;
     </select>
     
+    <!-- 根据站点ID和日期获取该站点所有时段的客流量 -->
+    <select id="selectHourlyStatByStationIdAndDate" resultType="com.homework.railwayproject.pojo.entity.PeakHourStat">
+        SELECT
+            sub.startTime,
+            DATE_FORMAT(ADDTIME(sub.startTime, '1:00:00'), '%H:00:00') AS endTime,
+            sub.passengerCount,
+            NULL AS isPeak
+        FROM (
+            SELECT
+                DATE_FORMAT(depart_time, '%H:00:00') AS startTime,
+                SUM(boarding_count + alighting_count) AS passengerCount
+            FROM high_speed_passenger_clean
+            WHERE (depart_station_id = #{stationId} OR arrive_station_id = #{stationId})
+            AND travel_date = #{date}
+            GROUP BY DATE_FORMAT(depart_time, '%H:00:00')
+        ) AS sub
+        ORDER BY sub.startTime;
+    </select>
 </mapper>

@@ -77,4 +77,20 @@ public class PeakHourStatController {
         StationPeakHourStatDTO result = peakHourStatService.getTopPeakHourByStationId(stationId, date);
         return JsonResult.ok(result);
     }
+
+    /**
+     * 根据站点ID和日期获取该站点所有时段的客流量
+     *
+     * @param stationId 站点ID
+     * @param date 指定日期
+     * @return 站点所有时段客流统计列表
+     */
+    @GetMapping("/hourly-stat-by-station")
+    @Operation(summary = "获取站点指定日期所有时段的客流量", description = "根据站点ID和日期获取该站点在指定日期所有时段的客流量")
+    public JsonResult<List<PeakHourStat>> getHourlyStatByStationIdAndDate(
+            @Parameter(description = "站点ID") @RequestParam Integer stationId,
+            @Parameter(description = "日期") @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate date) {
+        List<PeakHourStat> list = peakHourStatService.getHourlyStatByStationIdAndDate(stationId, date);
+        return JsonResult.ok(list);
+    }
 }

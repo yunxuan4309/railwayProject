@@ -38,4 +38,13 @@ public interface PeakHourStatMapper {
      * @return 站点最高客流时段统计
      */
     StationPeakHourStatDTO selectTopPeakHourByStationIdAndDate(@Param("stationId") Integer stationId, @Param("date") LocalDate date);
+
+    /**
+     * 根据站点ID和日期获取该站点所有时段的客流量
+     * 
+     * @param stationId 站点ID
+     * @param date 指定日期
+     * @return 站点所有时段客流统计列表
+     */
+    List<PeakHourStat> selectHourlyStatByStationIdAndDate(@Param("stationId") Integer stationId, @Param("date") LocalDate date);
 }

@@ -1,19 +1,9 @@
 package com.homework.railwayproject.service;
 
-//Author:[谢云轩]
-//QQ:[1721476339]
-//ID:[632307060623]
-//Date:2025/11/26
-//Time:8:48
-
 import com.homework.railwayproject.pojo.dto.CleaningResult;
 import com.homework.railwayproject.pojo.dto.ImportResult;
 import org.springframework.web.multipart.MultipartFile;
 
-/**
- * 高铁乘客数据导入服务接口
- * @author 17214
- */
 public interface HighSpeedPassengerImportService {
     /**
      * 批量导入CSV数据
@@ -61,5 +51,3 @@ public interface HighSpeedPassengerImportService {
      */
     CleaningResult cleanData(String filename);
 }
-
-//todo mybatis二级缓存配置

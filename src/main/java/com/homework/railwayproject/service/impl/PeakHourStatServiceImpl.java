@@ -29,11 +29,34 @@ public class PeakHourStatServiceImpl implements PeakHourStatService {
     @Override
     public List<PeakHourStat> getPeakHours(LocalDate date) {
         List<PeakHourStat> hourlyStats = peakHourStatMapper.selectHourlyStatByDate(date);
-        // 设置从数据库获取的灵敏度值
-        Double sensitivity = sensitivityConfigService.getPeakHourSensitivity();
-        for (PeakHourStat stat : hourlyStats) {
-            stat.setSensitivity(sensitivity);
+        
+        if (hourlyStats == null || hourlyStats.isEmpty()) {
+            return hourlyStats;
         }
+        
+        // 获取灵敏度配置值
+        Double sensitivity = sensitivityConfigService.getPeakHourSensitivity();
+        
+        // 计算所有时段的平均客流量
+        int totalPassengerCount = 0;
+        for (PeakHourStat stat : hourlyStats) {
+            totalPassengerCount += stat.getPassengerCount();
+        }
+        double averagePassengerCount = (double) totalPassengerCount / hourlyStats.size();
+        
+        // 根据灵敏度配置判断高峰时段
+        // 高峰时段判断逻辑：客流量 > 平均客流量 * (0.5 + 0.5 * 灵敏度值)
+        // 当灵敏度为0.0时，阈值为平均值的0.5倍（低阈值，更多时段被标记为高峰）
+        // 当灵敏度为1.0时，阈值为平均值的1.0倍（高阈值，更严格的高峰判断）
+        double peakThreshold = averagePassengerCount * (0.5 + 0.5 * sensitivity);
+        
+        for (PeakHourStat stat : hourlyStats) {
+            // 设置灵敏度值
+            stat.setSensitivity(sensitivity);
+            // 根据客流量是否超过阈值来判断是否为高峰时段
+            stat.setIsPeak(stat.getPassengerCount() > peakThreshold);
+        }
+        
         return hourlyStats;
     }
     
@@ -90,5 +113,39 @@ public class PeakHourStatServiceImpl implements PeakHourStatService {
     @Override
     public StationPeakHourStatDTO getTopPeakHourByStationId(Integer stationId, LocalDate date) {
         return peakHourStatMapper.selectTopPeakHourByStationIdAndDate(stationId, date);
+    }
+
+    @Override
+    public List<PeakHourStat> getHourlyStatByStationIdAndDate(Integer stationId, LocalDate date) {
+        List<PeakHourStat> hourlyStats = peakHourStatMapper.selectHourlyStatByStationIdAndDate(stationId, date);
+        
+        if (hourlyStats == null || hourlyStats.isEmpty()) {
+            return hourlyStats;
+        }
+        
+        // 获取灵敏度配置值
+        Double sensitivity = sensitivityConfigService.getPeakHourSensitivity();
+        
+        // 计算所有时段的平均客流量
+        int totalPassengerCount = 0;
+        for (PeakHourStat stat : hourlyStats) {
+            totalPassengerCount += stat.getPassengerCount();
+        }
+        double averagePassengerCount = (double) totalPassengerCount / hourlyStats.size();
+        
+        // 根据灵敏度配置判断高峰时段
+        // 高峰时段判断逻辑：客流量 > 平均客流量 * (0.5 + 0.5 * 灵敏度值)
+        // 当灵敏度为0.0时，阈值为平均值的0.5倍（低阈值，更多时段被标记为高峰）
+        // 当灵敏度为1.0时，阈值为平均值的1.0倍（高阈值，更严格的高峰判断）
+        double peakThreshold = averagePassengerCount * (0.5 + 0.5 * sensitivity);
+        
+        for (PeakHourStat stat : hourlyStats) {
+            // 设置灵敏度值
+            stat.setSensitivity(sensitivity);
+            // 根据客流量是否超过阈值来判断是否为高峰时段
+            stat.setIsPeak(stat.getPassengerCount() > peakThreshold);
+        }
+        
+        return hourlyStats;
     }
 }
