@@ -2,6 +2,7 @@ package com.homework.railwayproject.controller;
 
 import com.homework.railwayproject.pojo.entity.PeakHourStat;
 import com.homework.railwayproject.service.PeakHourStatService;
+import com.homework.railwayproject.service.SensitivityConfigService;
 import com.homework.railwayproject.web.JsonResult;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -29,6 +30,9 @@ public class PeakHourStatController {
     @Autowired
     private PeakHourStatService peakHourStatService;
     
+    @Autowired
+    private SensitivityConfigService sensitivityConfigService;
+    
     /**
      * 获取指定日期的高峰时段统计信息
      *
@@ -52,9 +56,8 @@ public class PeakHourStatController {
     @GetMapping("/top3-consecutive-peaks")
     @Operation(summary = "获取最拥挤的三个连续时段", description = "获取最拥挤的三个连续时段")
     public JsonResult<List<PeakHourStat>> getTop3ConsecutivePeakHours(
-            @Parameter(description = "日期") @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate date,
-            @Parameter(description = "灵敏度调节参数(0.0-1.0)，默认0.15") @RequestParam(defaultValue = "0.15") Double sensitivity) {
-        List<PeakHourStat> list = peakHourStatService.getTop3ConsecutivePeakHours(date, sensitivity);
+            @Parameter(description = "日期") @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate date) {
+        List<PeakHourStat> list = peakHourStatService.getTop3ConsecutivePeakHours(date);
         return JsonResult.ok(list);
     }
 }

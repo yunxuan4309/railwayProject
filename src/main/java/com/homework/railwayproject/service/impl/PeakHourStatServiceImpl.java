@@ -27,7 +27,13 @@ public class PeakHourStatServiceImpl implements PeakHourStatService {
     
     @Override
     public List<PeakHourStat> getPeakHours(LocalDate date) {
-        return peakHourStatMapper.selectHourlyStatByDate(date);
+        List<PeakHourStat> hourlyStats = peakHourStatMapper.selectHourlyStatByDate(date);
+        // 设置从数据库获取的灵敏度值
+        Double sensitivity = sensitivityConfigService.getPeakHourSensitivity();
+        for (PeakHourStat stat : hourlyStats) {
+            stat.setSensitivity(sensitivity);
+        }
+        return hourlyStats;
     }
     
     @Override
