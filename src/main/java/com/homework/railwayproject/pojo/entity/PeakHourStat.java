@@ -33,7 +33,7 @@ public class PeakHourStat implements Serializable {
     
     /**
      * 灵敏度调节参数（百分比）
-     * 默认值为15%，即0.15
+     * 从数据库获取，而不是使用默认值
      */
-    private Double sensitivity = 0.15;
+    private Double sensitivity;
 }
