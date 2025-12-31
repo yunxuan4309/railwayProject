@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.homework.railwayproject.mapper.ODHeatMapMapper">
+
+    <select id="selectODHeatMapByDate" resultType="com.homework.railwayproject.pojo.entity.ODHeatMap">
+        SELECT
+            s1.site_id AS originStationId,
+            s1.station_name AS originStationName,
+            s2.site_id AS destStationId,
+            s2.station_name AS destStationName,
+            SUM(COALESCE(hspc.boarding_count, 0) + COALESCE(hspc.alighting_count, 0)) AS passengerFlow,
+            DATE_FORMAT(hspc.travel_date, '%Y-%m-%d') AS travelDate,
+            ROUND(SUM(COALESCE(hspc.boarding_count, 0) + COALESCE(hspc.alighting_count, 0)) * 1.0 / 
+                  total_flow.total_passenger_flow, 4) AS heatValue,
+            ROW_NUMBER() OVER (ORDER BY SUM(COALESCE(hspc.boarding_count, 0) + COALESCE(hspc.alighting_count, 0)) DESC) AS `rank`
+        FROM high_speed_passenger_clean hspc
+        LEFT JOIN station s1 ON hspc.depart_station_id = s1.site_id
+        LEFT JOIN station s2 ON hspc.arrive_station_id = s2.site_id
+        JOIN (
+            SELECT SUM(COALESCE(boarding_count, 0) + COALESCE(alighting_count, 0)) AS total_passenger_flow
+            FROM high_speed_passenger_clean
+            WHERE travel_date = #{date}
+        ) total_flow
+        WHERE hspc.travel_date = #{date}
+            AND s1.site_id IS NOT NULL
+            AND s2.site_id IS NOT NULL
+            AND s1.site_id != s2.site_id
+        GROUP BY s1.site_id, s1.station_name, s2.site_id, s2.station_name, total_flow.total_passenger_flow
+        ORDER BY SUM(COALESCE(hspc.boarding_count, 0) + COALESCE(hspc.alighting_count, 0)) DESC
+    </select>
+
+    <select id="selectODHeatMapByDateRange" resultType="com.homework.railwayproject.pojo.entity.ODHeatMap">
+        SELECT
+            s1.site_id AS originStationId,
+            s1.station_name AS originStationName,
+            s2.site_id AS destStationId,
+            s2.station_name AS destStationName,
+            SUM(COALESCE(hspc.boarding_count, 0) + COALESCE(hspc.alighting_count, 0)) AS passengerFlow,
+            CONCAT(DATE_FORMAT(#{startDate}, '%Y-%m-%d'), ' to ', DATE_FORMAT(#{endDate}, '%Y-%m-%d')) AS travelDate,
+            ROUND(SUM(COALESCE(hspc.boarding_count, 0) + COALESCE(hspc.alighting_count, 0)) * 1.0 / 
+                  total_flow.total_passenger_flow, 4) AS heatValue,
+            ROW_NUMBER() OVER (ORDER BY SUM(COALESCE(hspc.boarding_count, 0) + COALESCE(hspc.alighting_count, 0)) DESC) AS `rank`
+        FROM high_speed_passenger_clean hspc
+        LEFT JOIN station s1 ON hspc.depart_station_id = s1.site_id
+        LEFT JOIN station s2 ON hspc.arrive_station_id = s2.site_id
+        CROSS JOIN (
+            SELECT SUM(COALESCE(boarding_count, 0) + COALESCE(alighting_count, 0)) AS total_passenger_flow
+            FROM high_speed_passenger_clean
+            WHERE travel_date BETWEEN #{startDate} AND #{endDate}
+        ) total_flow
+        WHERE hspc.travel_date BETWEEN #{startDate} AND #{endDate}
+            AND s1.site_id IS NOT NULL
+            AND s2.site_id IS NOT NULL
+            AND s1.site_id != s2.site_id
+        GROUP BY s1.site_id, s1.station_name,
+                 s2.site_id, s2.station_name,
+                 total_flow.total_passenger_flow
+        ORDER BY SUM(COALESCE(hspc.boarding_count, 0) + COALESCE(hspc.alighting_count, 0)) DESC
+    </select>
+
+    <select id="selectODHeatMapByDepartureStation" resultType="com.homework.railwayproject.pojo.entity.ODHeatMap">
+        SELECT
+            s1.site_id AS originStationId,
+            s1.station_name AS originStationName,
+            s2.site_id AS destStationId,
+            s2.station_name AS destStationName,
+            (COALESCE(hspc.boarding_count, 0) + COALESCE(hspc.alighting_count, 0)) AS passengerFlow,
+            DATE_FORMAT(hspc.travel_date, '%Y-%m-%d') AS travelDate,
+            ROUND((COALESCE(hspc.boarding_count, 0) + COALESCE(hspc.alighting_count, 0)) * 1.0 / 
+                  total_flow.total_passenger_flow, 4) AS heatValue,
+            ROW_NUMBER() OVER (ORDER BY (COALESCE(hspc.boarding_count, 0) + COALESCE(hspc.alighting_count, 0)) DESC) AS `rank`
+        FROM high_speed_passenger_clean hspc
+        LEFT JOIN station s1 ON hspc.depart_station_id = s1.site_id
+        LEFT JOIN station s2 ON hspc.arrive_station_id = s2.site_id
+        JOIN (
+            SELECT SUM(COALESCE(boarding_count, 0) + COALESCE(alighting_count, 0)) AS total_passenger_flow
+            FROM high_speed_passenger_clean
+            WHERE depart_station_id = #{stationId} AND travel_date = #{date}
+        ) total_flow
+        WHERE hspc.depart_station_id = #{stationId}
+            AND hspc.travel_date = #{date}
+            AND s2.site_id IS NOT NULL
+        ORDER BY (COALESCE(hspc.boarding_count, 0) + COALESCE(hspc.alighting_count, 0)) DESC
+    </select>
+
+    <select id="selectODHeatMapByArrivalStation" resultType="com.homework.railwayproject.pojo.entity.ODHeatMap">
+        SELECT
+            s1.site_id AS originStationId,
+            s1.station_name AS originStationName,
+            s2.site_id AS destStationId,
+            s2.station_name AS destStationName,
+            (COALESCE(hspc.boarding_count, 0) + COALESCE(hspc.alighting_count, 0)) AS passengerFlow,
+            DATE_FORMAT(hspc.travel_date, '%Y-%m-%d') AS travelDate,
+            ROUND((COALESCE(hspc.boarding_count, 0) + COALESCE(hspc.alighting_count, 0)) * 1.0 / 
+                  total_flow.total_passenger_flow, 4) AS heatValue,
+            ROW_NUMBER() OVER (ORDER BY (COALESCE(hspc.boarding_count, 0) + COALESCE(hspc.alighting_count, 0)) DESC) AS `rank`
+        FROM high_speed_passenger_clean hspc
+        LEFT JOIN station s1 ON hspc.depart_station_id = s1.site_id
+        LEFT JOIN station s2 ON hspc.arrive_station_id = s2.site_id
+        JOIN (
+            SELECT SUM(COALESCE(boarding_count, 0) + COALESCE(alighting_count, 0)) AS total_passenger_flow
+            FROM high_speed_passenger_clean
+            WHERE arrive_station_id = #{stationId} AND travel_date = #{date}
+        ) total_flow
+        WHERE hspc.arrive_station_id = #{stationId}
+            AND hspc.travel_date = #{date}
+            AND s1.site_id IS NOT NULL
+        ORDER BY (COALESCE(hspc.boarding_count, 0) + COALESCE(hspc.alighting_count, 0)) DESC
+    </select>
+</mapper>
