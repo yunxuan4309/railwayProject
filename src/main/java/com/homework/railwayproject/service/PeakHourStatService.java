@@ -1,5 +1,6 @@
 package com.homework.railwayproject.service;
 
+import com.homework.railwayproject.pojo.dto.StationPeakHourStatDTO;
 import com.homework.railwayproject.pojo.entity.PeakHourStat;
 
 import java.time.LocalDate;
@@ -34,4 +35,13 @@ public interface PeakHourStatService {
      * @return 最拥挤的三个连续时段列表
      */
     List<PeakHourStat> getTop3ConsecutivePeakHours(LocalDate date, double sensitivity);
+    
+    /**
+     * 根据站点ID和日期获取该站点客流量最高的时段
+     * 
+     * @param stationId 站点ID
+     * @param date 指定日期
+     * @return 站点最高客流时段统计
+     */
+    StationPeakHourStatDTO getTopPeakHourByStationId(Integer stationId, LocalDate date);
 }

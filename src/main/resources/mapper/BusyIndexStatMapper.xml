@@ -13,7 +13,11 @@
                 s.station_name AS siteName,
                 COALESCE(SUM(hspc.boarding_count), 0) AS departureCount,
                 COALESCE(SUM(hspc.alighting_count), 0) AS arrivalCount,
-                (COALESCE(SUM(hspc.boarding_count), 0) * #{defaultSensitivity} + COALESCE(SUM(hspc.alighting_count), 0) * (1-#{defaultSensitivity})) AS busyIndex
+                (COALESCE(SUM(hspc.boarding_count), 0) * 
+                 (SELECT sensitivity_value FROM sensitivity_config WHERE config_type = 'busy_index_departure_weight' LIMIT 1)
+                 + 
+                 COALESCE(SUM(hspc.alighting_count), 0) * 
+                 (SELECT sensitivity_value FROM sensitivity_config WHERE config_type = 'busy_index_arrival_weight' LIMIT 1)) AS busyIndex
             FROM station s
             LEFT JOIN high_speed_passenger_clean hspc ON (
                 s.site_id = hspc.original_site_id 
@@ -34,7 +38,11 @@
         s.station_name AS siteName,
         COALESCE(SUM(hspc.boarding_count), 0) AS departureCount,
         COALESCE(SUM(hspc.alighting_count), 0) AS arrivalCount,
-        (COALESCE(SUM(hspc.boarding_count), 0) * #{defaultSensitivity} + COALESCE(SUM(hspc.alighting_count), 0) *(1- #{defaultSensitivity})) AS busyIndex
+        (COALESCE(SUM(hspc.boarding_count), 0) * 
+         (SELECT sensitivity_value FROM sensitivity_config WHERE config_type = 'busy_index_departure_weight' LIMIT 1)
+         + 
+         COALESCE(SUM(hspc.alighting_count), 0) * 
+         (SELECT sensitivity_value FROM sensitivity_config WHERE config_type = 'busy_index_arrival_weight' LIMIT 1)) AS busyIndex
         FROM station s
         LEFT JOIN high_speed_passenger_clean hspc ON (
         s.site_id = hspc.original_site_id

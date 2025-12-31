@@ -1,5 +1,6 @@
 package com.homework.railwayproject.controller;
 
+import com.homework.railwayproject.pojo.dto.StationPeakHourStatDTO;
 import com.homework.railwayproject.pojo.entity.PeakHourStat;
 import com.homework.railwayproject.service.PeakHourStatService;
 import com.homework.railwayproject.service.SensitivityConfigService;
@@ -59,5 +60,21 @@ public class PeakHourStatController {
             @Parameter(description = "日期") @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate date) {
         List<PeakHourStat> list = peakHourStatService.getTop3ConsecutivePeakHours(date);
         return JsonResult.ok(list);
+    }
+    
+    /**
+     * 根据站点ID和日期获取该站点客流量最高的时段
+     *
+     * @param stationId 站点ID
+     * @param date 指定日期
+     * @return 站点最高客流时段统计
+     */
+    @GetMapping("/top-peak-hour-by-station")
+    @Operation(summary = "获取站点指定日期客流量最高的时段", description = "根据站点ID和日期获取该站点在指定日期客流量最高的时段")
+    public JsonResult<StationPeakHourStatDTO> getTopPeakHourByStationId(
+            @Parameter(description = "站点ID") @RequestParam Integer stationId,
+            @Parameter(description = "日期") @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate date) {
+        StationPeakHourStatDTO result = peakHourStatService.getTopPeakHourByStationId(stationId, date);
+        return JsonResult.ok(result);
     }
 }

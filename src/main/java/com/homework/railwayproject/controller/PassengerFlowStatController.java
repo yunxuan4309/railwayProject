@@ -216,4 +216,6 @@ public class PassengerFlowStatController {
             return JsonResult.fail(new ServiceException(ServiceCode.ERROR_UNKNOWN, e.getMessage()));
         }
     }
+
+
 }

@@ -21,8 +21,7 @@ public interface BusyIndexStatMapper {
      * @return 繁忙指数统计列表
      */
     List<BusyIndexStat> selectTop20BusyIndexStations(@Param("startTime") LocalDate startTime,
-                                                     @Param("endTime") LocalDate endTime,
-                                                     @Param("defaultSensitivity") double defaultSensitivity);
+                                                     @Param("endTime") LocalDate endTime);
 
     /**
      * 查询指定站点指定时间段的繁忙指数
@@ -31,5 +30,5 @@ public interface BusyIndexStatMapper {
      * @param endTime
      * @return
      */
-    BusyIndexStat selectBusyIndexStatByIdAndTime(@Param("siteId") Integer siteId, @Param("startTime") LocalDate startTime, @Param("endTime") LocalDate endTime, @Param("defaultSensitivity") double defaultSensitivity);
+    BusyIndexStat selectBusyIndexStatByIdAndTime(@Param("siteId") Integer siteId, @Param("startTime") LocalDate startTime, @Param("endTime") LocalDate endTime);
 }

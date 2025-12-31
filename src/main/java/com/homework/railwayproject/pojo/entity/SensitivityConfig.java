@@ -32,8 +32,8 @@ public class SensitivityConfig extends BaseEntity implements Serializable {
     private String configType;
 
     /**
-     * 灵敏度值（0.0-1.0之间）
-     * 该配置可用于繁忙指数的权重配置和高峰时段灵敏度配置，范围均在0到1之间
+     * 数值（对于容量配置为整数值，对于灵敏度配置为0.00-1.00之间的值）
+     * 该配置可用于繁忙指数的权重配置、高峰时段灵敏度配置或容量基础值配置
      */
     private Double sensitivityValue;
 

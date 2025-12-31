@@ -34,9 +34,9 @@ public class StationLevelCapacity implements Serializable {
     private Integer platformCapacity;
     
     /**
-     * 基础检票口容客量
+     * 每个检票口的额外容客量
      */
-    private Integer baseGateCapacity;
+    private Integer gateCapacity;
     
     /**
      * 计算实际容客量
@@ -51,7 +51,7 @@ public class StationLevelCapacity implements Serializable {
         if (gateCount == null) gateCount = 0;
         
         Integer platformAdditionalCapacity = platformCount * this.platformCapacity;
-        Integer gateAdditionalCapacity = gateCount * this.baseGateCapacity;
+        Integer gateAdditionalCapacity = gateCount * this.gateCapacity;
         
         return this.baseCapacity + platformAdditionalCapacity + gateAdditionalCapacity;
     }
@@ -62,12 +62,12 @@ public class StationLevelCapacity implements Serializable {
     public StationLevelCapacity() {}
     
     public StationLevelCapacity(String stationLevel, String levelName, Integer baseCapacity, 
-                               Integer platformCapacity, Integer baseGateCapacity) {
+                               Integer platformCapacity, Integer gateCapacity) {
         this.stationLevel = stationLevel;
         this.levelName = levelName;
         this.baseCapacity = baseCapacity;
         this.platformCapacity = platformCapacity;
-        this.baseGateCapacity = baseGateCapacity;
+        this.gateCapacity = gateCapacity;
     }
     
     /**

@@ -268,7 +268,7 @@ CREATE TABLE sensitivity_config (
     id INT AUTO_INCREMENT PRIMARY KEY COMMENT '主键ID',
     config_name VARCHAR(100) NOT NULL COMMENT '配置名称',
     config_type VARCHAR(50) NOT NULL UNIQUE COMMENT '配置类型',
-    sensitivity_value DOUBLE(3,2) DEFAULT 0.15 COMMENT '灵敏度值（0.00-1.00之间）',
+    sensitivity_value DOUBLE(10,2) DEFAULT 0.15 COMMENT '数值（对于容量配置为整数值，对于灵敏度配置为0.00-1.00之间的值）',
     description VARCHAR(255) COMMENT '配置描述',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
@@ -298,3 +298,5 @@ VALUES ('繁忙指数权重 - 中转量', 'busy_index_transfer_weight', 0.0, '�
 
 -- 为high_speed_passenger_clean表添加复合索引
 CREATE INDEX idx_travel_date_time_site ON high_speed_passenger_clean(travel_date, depart_time, original_site_id);
+-- 添加站点等级容量配置到sensitivity_config表
+-- 配置格式：description字段存储"站台容量,检票口容量"

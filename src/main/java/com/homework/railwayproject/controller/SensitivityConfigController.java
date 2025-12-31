@@ -41,17 +41,17 @@ public class SensitivityConfigController {
     }
 
     /**
-     * 根据配置类型更新灵敏度值
+     * 根据配置类型更新配置值
      *
      * @param configType 配置类型
-     * @param sensitivityValue 灵敏度值
+     * @param sensitivityValue 配置值（根据配置类型不同，可能是0.00-1.00之间的灵敏度值，也可能是容量等整数值）
      * @return 操作结果
      */
     @PostMapping("/update-by-type")
-    @Operation(summary = "根据配置类型更新灵敏度值", description = "根据配置类型更新灵敏度值")
+    @Operation(summary = "根据配置类型更新配置值", description = "根据配置类型更新配置值")
     public JsonResult<Boolean> updateSensitivityByConfigType(
             @Parameter(description = "配置类型") @RequestParam String configType,
-            @Parameter(description = "灵敏度值(0.0-1.0)") @RequestParam Double sensitivityValue) {
+            @Parameter(description = "配置值（根据配置类型不同，可能是0.00-1.00之间的灵敏度值，也可能是容量等整数值）") @RequestParam Double sensitivityValue) {
         log.info("接收到更新请求 - configType: {}, sensitivityValue: {}", configType, sensitivityValue);
         boolean result = sensitivityConfigService.updateSensitivityByConfigType(configType, sensitivityValue);
         log.info("更新结果: {}", result);
@@ -73,15 +73,15 @@ public class SensitivityConfigController {
     }
 
     /**
-     * 更新高峰时段统计的灵敏度配置
+     * 更新高峰时段统计的配置值
      *
-     * @param sensitivityValue 灵敏度值
+     * @param sensitivityValue 配置值（0.0-1.0之间的灵敏度值）
      * @return 操作结果
      */
     @PostMapping("/peak-hour")
-    @Operation(summary = "更新高峰时段统计的灵敏度配置", description = "更新高峰时段统计的灵敏度配置")
+    @Operation(summary = "更新高峰时段统计的配置值", description = "更新高峰时段统计的配置值")
     public JsonResult<Boolean> updatePeakHourSensitivity(
-            @Parameter(description = "灵敏度值(0.0-1.0)") @RequestParam Double sensitivityValue) {
+            @Parameter(description = "配置值（0.0-1.0之间的灵敏度值）") @RequestParam Double sensitivityValue) {
         log.info("接收到高峰时段灵敏度更新请求 - sensitivityValue: {}", sensitivityValue);
         log.info("前端发送的参数类型为: Double, 值为: {}, 参数类型class: {}", sensitivityValue, sensitivityValue != null ? sensitivityValue.getClass().getSimpleName() : "null");
         boolean result = sensitivityConfigService.updatePeakHourSensitivity(sensitivityValue);

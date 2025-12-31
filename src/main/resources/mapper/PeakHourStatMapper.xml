@@ -24,4 +24,47 @@
         ORDER BY sub.startTime;
     </select>
     
+    <!-- 根据站点ID获取该站点客流量最高的时段 -->
+    <select id="selectTopPeakHourByStationId" resultType="com.homework.railwayproject.pojo.dto.StationPeakHourStatDTO">
+        SELECT
+            sub.startTime,
+            DATE_FORMAT(ADDTIME(sub.startTime, '1:00:00'), '%H:00:00') AS endTime,
+            sub.passengerCount,
+            #{stationId} AS stationId,
+            s.station_name AS stationName
+        FROM (
+            SELECT
+                DATE_FORMAT(depart_time, '%H:00:00') AS startTime,
+                SUM(boarding_count + alighting_count) AS passengerCount
+            FROM high_speed_passenger_clean
+            WHERE (depart_station_id = #{stationId} OR arrive_station_id = #{stationId})
+            GROUP BY DATE_FORMAT(depart_time, '%H:00:00')
+        ) AS sub
+        JOIN station s ON s.site_id = #{stationId}
+        ORDER BY sub.passengerCount DESC
+        LIMIT 1;
+    </select>
+    
+    <!-- 根据站点ID和日期获取该站点客流量最高的时段 -->
+    <select id="selectTopPeakHourByStationIdAndDate" resultType="com.homework.railwayproject.pojo.dto.StationPeakHourStatDTO">
+        SELECT
+            sub.startTime,
+            DATE_FORMAT(ADDTIME(sub.startTime, '1:00:00'), '%H:00:00') AS endTime,
+            sub.passengerCount,
+            #{stationId} AS stationId,
+            s.station_name AS stationName
+        FROM (
+            SELECT
+                DATE_FORMAT(depart_time, '%H:00:00') AS startTime,
+                SUM(boarding_count + alighting_count) AS passengerCount
+            FROM high_speed_passenger_clean
+            WHERE (depart_station_id = #{stationId} OR arrive_station_id = #{stationId})
+            AND travel_date = #{date}
+            GROUP BY DATE_FORMAT(depart_time, '%H:00:00')
+        ) AS sub
+        JOIN station s ON s.site_id = #{stationId}
+        ORDER BY sub.passengerCount DESC
+        LIMIT 1;
+    </select>
+    
 </mapper>

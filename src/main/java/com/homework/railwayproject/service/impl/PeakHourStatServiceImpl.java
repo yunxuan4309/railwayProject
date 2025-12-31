@@ -1,6 +1,7 @@
 package com.homework.railwayproject.service.impl;
 
 import com.homework.railwayproject.mapper.PeakHourStatMapper;
+import com.homework.railwayproject.pojo.dto.StationPeakHourStatDTO;
 import com.homework.railwayproject.pojo.entity.PeakHourStat;
 import com.homework.railwayproject.service.PeakHourStatService;
 import com.homework.railwayproject.service.SensitivityConfigService;
@@ -84,5 +85,10 @@ public class PeakHourStatServiceImpl implements PeakHourStatService {
         }
         
         return top3Peaks;
+    }
+    
+    @Override
+    public StationPeakHourStatDTO getTopPeakHourByStationId(Integer stationId, LocalDate date) {
+        return peakHourStatMapper.selectTopPeakHourByStationIdAndDate(stationId, date);
     }
 }

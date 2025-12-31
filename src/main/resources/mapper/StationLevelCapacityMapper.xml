@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.homework.railwayproject.mapper.StationLevelCapacityMapper">
+
+    <!-- 根据站点等级获取容量配置 -->
+    <select id="selectByStationLevel" resultType="com.homework.railwayproject.pojo.entity.SensitivityConfig">
+        SELECT *
+        FROM sensitivity_config
+        WHERE config_type = CONCAT('station_level_capacity_', #{stationLevel})
+          AND is_deleted = 0
+    </select>
+    
+    <!-- 获取所有启用的容量配置 -->
+    <select id="selectAllEnabled" resultType="com.homework.railwayproject.pojo.entity.SensitivityConfig">
+        SELECT *
+        FROM sensitivity_config
+        WHERE config_type LIKE 'station_level_capacity_%'
+          AND is_deleted = 0
+    </select>
+
+</mapper>

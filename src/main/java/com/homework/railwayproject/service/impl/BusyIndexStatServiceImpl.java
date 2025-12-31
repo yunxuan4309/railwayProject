@@ -3,7 +3,6 @@ package com.homework.railwayproject.service.impl;
 import com.homework.railwayproject.mapper.BusyIndexStatMapper;
 import com.homework.railwayproject.pojo.entity.BusyIndexStat;
 import com.homework.railwayproject.service.BusyIndexStatService;
-import com.homework.railwayproject.service.SensitivityConfigService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -22,8 +21,6 @@ public class BusyIndexStatServiceImpl implements BusyIndexStatService {
 
     @Autowired
     private BusyIndexStatMapper busyIndexStatMapper;
-    @Autowired
-    private SensitivityConfigService sensitivityConfigService;
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
     @Override
@@ -46,9 +43,9 @@ public class BusyIndexStatServiceImpl implements BusyIndexStatService {
             log.debug("从缓存获取站点客流统计: {}", cacheKey);
             return cachedList;
         }
-        Double defaultSensitivity = sensitivityConfigService.getPeakHourSensitivity();
+        
         // 缓存未命中，查询数据库
-        List<BusyIndexStat> list = busyIndexStatMapper.selectTop20BusyIndexStations(startTime, endTime, defaultSensitivity);
+        List<BusyIndexStat> list = busyIndexStatMapper.selectTop20BusyIndexStations(startTime, endTime);
 
         // 存入缓存，有效期2小时
         ops.set(cacheKey, list, 2, java.util.concurrent.TimeUnit.HOURS);
@@ -62,14 +59,12 @@ public class BusyIndexStatServiceImpl implements BusyIndexStatService {
 
         LocalDate endTime = LocalDate.now();
         LocalDate startTime = endTime.minusDays(1);
-        Double defaultSensitivity = sensitivityConfigService.getPeakHourSensitivity();
-        List<BusyIndexStat> list = busyIndexStatMapper.selectTop20BusyIndexStations(startTime, endTime, defaultSensitivity);
+        List<BusyIndexStat> list = busyIndexStatMapper.selectTop20BusyIndexStations(startTime, endTime);
 
     }
 
     @Override
     public BusyIndexStat getBusyIndexStatByIdAndTime(Integer siteId, LocalDate startTime, LocalDate endTime) {
-        Double defaultSensitivity = sensitivityConfigService.getPeakHourSensitivity();
-        return busyIndexStatMapper.selectBusyIndexStatByIdAndTime(siteId, startTime, endTime, defaultSensitivity);
+        return busyIndexStatMapper.selectBusyIndexStatByIdAndTime(siteId, startTime, endTime);
     }
 }

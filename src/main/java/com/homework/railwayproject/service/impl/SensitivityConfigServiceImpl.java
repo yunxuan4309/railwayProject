@@ -27,9 +27,9 @@ public class SensitivityConfigServiceImpl implements SensitivityConfigService {
     public boolean updateSensitivityByConfigType(String configType, Double sensitivityValue) {
         log.info("更新配置类型为 {} 的灵敏度值为 {}", configType, sensitivityValue);
         
-        // 验证灵敏度值是否在有效范围内
-        if (sensitivityValue == null || sensitivityValue < 0.0 || sensitivityValue > 1.0) {
-            log.error("灵敏度值 {} 不在有效范围内 (0.0 - 1.0)", sensitivityValue);
+        // 验证灵敏度值不能为null
+        if (sensitivityValue == null) {
+            log.error("灵敏度值不能为null");
             return false;
         }
 
@@ -53,6 +53,13 @@ public class SensitivityConfigServiceImpl implements SensitivityConfigService {
     @Override
     public boolean updatePeakHourSensitivity(Double sensitivityValue) {
         String configType = "peak_hour_sensitivity";
+        
+        // 验证高峰时段灵敏度值是否在有效范围内（0.0 - 1.0）
+        if (sensitivityValue == null || sensitivityValue < 0.0 || sensitivityValue > 1.0) {
+            log.error("高峰时段灵敏度值 {} 不在有效范围内 (0.0 - 1.0)", sensitivityValue);
+            return false;
+        }
+        
         return updateSensitivityByConfigType(configType, sensitivityValue);
     }
 }
