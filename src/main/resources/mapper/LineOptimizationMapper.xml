@@ -1,0 +1,379 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.homework.railwayproject.mapper.LineOptimizationMapper">
+
+    <!-- 基础结果映射 -->
+    <resultMap id="SectionHourlyFlowMap" type="com.homework.railwayproject.pojo.entity.SectionHourlyFlow">
+        <id column="id" property="id"/>
+        <result column="line_code" property="lineCode"/>
+        <result column="start_station_id" property="startStationId"/>
+        <result column="end_station_id" property="endStationId"/>
+        <result column="flow_date" property="flowDate"/>
+        <result column="hour" property="hour"/>
+        <result column="passenger_count" property="passengerCount"/>
+        <result column="train_capacity" property="trainCapacity"/>
+        <result column="load_rate" property="loadRate"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="create_by" property="createBy"/>
+        <result column="update_by" property="updateBy"/>
+        <result column="status" property="status"/>
+        <result column="is_deleted" property="isDeleted"/>
+    </resultMap>
+
+    <resultMap id="SectionDailyFlowMap" type="com.homework.railwayproject.pojo.entity.SectionDailyFlow">
+        <id column="id" property="id"/>
+        <result column="line_code" property="lineCode"/>
+        <result column="start_station_id" property="startStationId"/>
+        <result column="end_station_id" property="endStationId"/>
+        <result column="flow_date" property="flowDate"/>
+        <result column="avg_load_rate" property="avgLoadRate"/>
+        <result column="max_load_rate" property="maxLoadRate"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="create_by" property="createBy"/>
+        <result column="update_by" property="updateBy"/>
+        <result column="status" property="status"/>
+        <result column="is_deleted" property="isDeleted"/>
+    </resultMap>
+
+    <resultMap id="LoadRateVOMap" type="com.homework.railwayproject.pojo.vo.LoadRateVO">
+        <result column="line_code" property="lineCode"/>
+        <result column="start_station_id" property="startStationId"/>
+        <result column="end_station_id" property="endStationId"/>
+        <result column="start_station_name" property="startStationName"/>
+        <result column="end_station_name" property="endStationName"/>
+        <result column="flow_date" property="flowDate"/>
+        <result column="hour" property="hour"/>
+        <result column="time_range" property="timeRange"/>
+        <result column="passenger_count" property="passengerCount"/>
+        <result column="train_capacity" property="trainCapacity"/>
+        <result column="load_rate" property="loadRate"/>
+    </resultMap>
+
+    <resultMap id="OverloadAlertVOMap" type="com.homework.railwayproject.pojo.vo.OverloadAlertVO">
+        <id column="id" property="id"/>
+        <result column="line_code" property="lineCode"/>
+        <result column="start_station_id" property="startStationId"/>
+        <result column="end_station_id" property="endStationId"/>
+        <result column="start_station_name" property="startStationName"/>
+        <result column="end_station_name" property="endStationName"/>
+        <result column="section" property="section"/>
+        <result column="alert_start_date" property="alertStartDate"/>
+        <result column="alert_end_date" property="alertEndDate"/>
+        <result column="consecutive_days" property="consecutiveDays"/>
+        <result column="avg_load_rate" property="avgLoadRate"/>
+        <result column="alert_level" property="alertLevel"/>
+        <result column="status" property="status"/>
+    </resultMap>
+
+    <!-- 1. 查询区间满载率 -->
+    <select id="selectSectionLoadRate" parameterType="com.homework.railwayproject.pojo.dto.SectionLoadRateQueryDTO"
+            resultMap="LoadRateVOMap">
+        SELECT
+        shf.line_code,
+        shf.start_station_id,
+        shf.end_station_id,
+        s1.station_name as start_station_name,
+        s2.station_name as end_station_name,
+        shf.flow_date,
+        shf.hour,
+        CONCAT(LPAD(shf.hour, 2, '0'), ':00-', LPAD(shf.hour, 2, '0'), ':59') as time_range,
+        shf.passenger_count,
+        shf.train_capacity,
+        shf.load_rate
+        FROM section_hourly_flow shf
+        LEFT JOIN station s1 ON shf.start_station_id = s1.site_id
+        LEFT JOIN station s2 ON shf.end_station_id = s2.site_id
+        WHERE shf.is_deleted = 0
+        <if test="query.lineCode != null and query.lineCode != ''">
+            AND shf.line_code = #{query.lineCode}
+        </if>
+        <if test="query.flowDate != null">
+            AND shf.flow_date = #{query.flowDate}
+        </if>
+        <if test="query.startHour != null">
+            AND shf.hour &gt;= #{query.startHour}
+        </if>
+        <if test="query.endHour != null">
+            AND shf.hour &lt;= #{query.endHour}
+        </if>
+        ORDER BY shf.line_code, shf.start_station_id, shf.hour
+    </select>
+
+    <!-- 2. 查询区间每小时客流数据 -->
+    <select id="selectSectionHourlyFlow" resultMap="SectionHourlyFlowMap">
+        SELECT * FROM section_hourly_flow
+        WHERE is_deleted = 0
+        <if test="lineCode != null and lineCode != ''">
+            AND line_code = #{lineCode}
+        </if>
+        <if test="flowDate != null">
+            AND flow_date = #{flowDate}
+        </if>
+        ORDER BY line_code, start_station_id, hour
+    </select>
+
+    <!-- 3. 查询指定区间小时数据 -->
+    <select id="selectHourlyFlow" resultMap="SectionHourlyFlowMap">
+        SELECT * FROM section_hourly_flow
+        WHERE line_code = #{lineCode}
+                  AND start_station_id = #{startStationId}
+                  AND end_station_id = #{endStationId}
+                  AND flow_date = #{flowDate}
+                  AND hour = #{hour}
+          AND is_deleted = 0
+    </select>
+
+    <!-- 4. 插入区间每小时数据 -->
+    <insert id="insertSectionHourlyFlow" parameterType="com.homework.railwayproject.pojo.entity.SectionHourlyFlow"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO section_hourly_flow (
+            line_code, start_station_id, end_station_id, flow_date, hour,
+            passenger_count, train_capacity, load_rate,
+            create_time, update_time, create_by, update_by, status, is_deleted
+        ) VALUES (
+                     #{lineCode}, #{startStationId}, #{endStationId}, #{flowDate}, #{hour},
+                     #{passengerCount}, #{trainCapacity}, #{loadRate},
+                     NOW(), NOW(), #{createBy}, #{updateBy}, 1, 0
+                 )
+    </insert>
+
+    <!-- 5. 删除指定日期的每小时数据 -->
+    <delete id="deleteSectionHourlyFlowByDate">
+        UPDATE section_hourly_flow
+        SET is_deleted = 1, update_time = NOW()
+        WHERE flow_date = #{flowDate}
+          AND is_deleted = 0
+    </delete>
+
+    <!-- 6. 计算区间每小时客流（从清洗数据表实时计算） -->
+    <select id="calculateSectionHourlyFlow" resultMap="SectionHourlyFlowMap">
+        SELECT
+        ls.line_code,
+        ls.site_id as start_station_id,
+        ls2.site_id as end_station_id,
+        #{flowDate} as flow_date,
+        #{hour} as hour,
+        IFNULL(SUM(
+        CASE
+        WHEN hspc.depart_time &gt;= CONCAT(LPAD(#{hour}, 2, '0'), ':00:00')
+        AND hspc.depart_time &lt; CONCAT(LPAD(#{hour} + 1, 2, '0'), ':00:00')
+        THEN hspc.boarding_count
+        ELSE 0
+        END
+        ), 0) as passenger_count,
+        (
+        SELECT IFNULL(AVG(train_capacity), 500)
+        FROM train t
+        WHERE t.is_deleted = 0
+        AND EXISTS (
+        SELECT 1 FROM high_speed_passenger_clean h
+        WHERE h.train_code = t.train_code
+        AND h.travel_date = #{flowDate}
+        )
+        ) as train_capacity,
+        0 as load_rate  <!-- 需要后续计算 -->
+        FROM line_station ls
+        INNER JOIN line_station ls2 ON ls.line_code = ls2.line_code
+        AND ls2.line_site_id = ls.line_site_id + 1
+        LEFT JOIN high_speed_passenger_clean hspc ON
+        hspc.depart_station_id = ls.site_id
+        AND hspc.arrive_station_id = ls2.site_id
+        AND hspc.travel_date = #{flowDate}
+        AND hspc.is_deleted = 0
+        WHERE ls.is_deleted = 0
+        AND ls2.is_deleted = 0
+        GROUP BY ls.line_code, ls.site_id, ls2.site_id
+        HAVING passenger_count &gt; 0
+    </select>
+
+    <!-- 7. 计算每日统计数据（从小时表汇总） -->
+    <select id="calculateSectionDailyFlow" resultMap="SectionDailyFlowMap">
+        SELECT
+            line_code,
+            start_station_id,
+            end_station_id,
+            flow_date,
+            AVG(load_rate) as avg_load_rate,
+            MAX(load_rate) as max_load_rate
+        FROM section_hourly_flow
+        WHERE flow_date = #{flowDate}
+          AND is_deleted = 0
+        GROUP BY line_code, start_station_id, end_station_id, flow_date
+    </select>
+
+    <!-- 8. 查询每日数据 -->
+    <select id="selectDailyFlow" resultMap="SectionDailyFlowMap">
+        SELECT * FROM section_daily_flow
+        WHERE line_code = #{lineCode}
+          AND start_station_id = #{startStationId}
+          AND end_station_id = #{endStationId}
+          AND flow_date = #{flowDate}
+          AND is_deleted = 0
+    </select>
+
+    <!-- 9. 插入每日数据 -->
+    <insert id="insertSectionDailyFlow" parameterType="com.homework.railwayproject.pojo.entity.SectionDailyFlow"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO section_daily_flow (
+            line_code, start_station_id, end_station_id, flow_date,
+            avg_load_rate, max_load_rate,
+            create_time, update_time, create_by, update_by, status, is_deleted
+        ) VALUES (
+                     #{lineCode}, #{startStationId}, #{endStationId}, #{flowDate},
+                     #{avgLoadRate}, #{maxLoadRate},
+                     NOW(), NOW(), #{createBy}, #{updateBy}, 1, 0
+                 )
+    </insert>
+
+    <!-- 10. 更新每日数据 -->
+    <update id="updateDailyFlow" parameterType="com.homework.railwayproject.pojo.entity.SectionDailyFlow">
+        UPDATE section_daily_flow
+        SET avg_load_rate = #{avgLoadRate},
+            max_load_rate = #{maxLoadRate},
+            update_time = NOW(),
+            update_by = #{updateBy}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 11. 查询活跃状态的过载告警 -->
+    <select id="selectActiveOverloadAlerts" resultMap="OverloadAlertVOMap">
+        SELECT
+            oa.*,
+            s1.station_name as start_station_name,
+            s2.station_name as end_station_name,
+            CONCAT(s1.station_name, '-', s2.station_name) as section
+        FROM overload_alert oa
+            LEFT JOIN station s1 ON oa.start_station_id = s1.site_id
+            LEFT JOIN station s2 ON oa.end_station_id = s2.site_id
+        WHERE oa.status = 'ACTIVE'
+          AND oa.is_deleted = 0
+        ORDER BY oa.avg_load_rate DESC
+    </select>
+
+    <!-- 12. 查询连续过载区间 -->
+    <select id="selectContinuousOverloadSections" resultMap="OverloadAlertVOMap">
+        WITH daily_overload AS (
+            SELECT
+                sdf.line_code,
+                sdf.start_station_id,
+                sdf.end_station_id,
+                sdf.flow_date,
+                sdf.avg_load_rate,
+                s1.station_name as start_station_name,
+                s2.station_name as end_station_name
+            FROM section_daily_flow sdf
+                     LEFT JOIN station s1 ON sdf.start_station_id = s1.site_id
+                     LEFT JOIN station s2 ON sdf.end_station_id = s2.site_id
+            WHERE sdf.avg_load_rate &gt; #{threshold}
+              AND sdf.is_deleted = 0
+              AND sdf.flow_date BETWEEN #{startDate} AND #{endDate}
+        ),
+             consecutive_groups AS (
+                 SELECT
+                     line_code,
+                     start_station_id,
+                     end_station_id,
+                     start_station_name,
+                     end_station_name,
+                     flow_date,
+                     avg_load_rate,
+                     DATE_SUB(flow_date, INTERVAL ROW_NUMBER() OVER (
+                    PARTITION BY line_code, start_station_id, end_station_id
+                    ORDER BY flow_date
+                ) DAY) as date_group
+                 FROM daily_overload
+             )
+        SELECT
+            line_code,
+            start_station_id,
+            end_station_id,
+            start_station_name,
+            end_station_name,
+            CONCAT(start_station_name, '-', end_station_name) as section,
+            MIN(flow_date) as alert_start_date,
+            MAX(flow_date) as alert_end_date,
+            COUNT(*) as consecutive_days,
+            AVG(avg_load_rate) as avg_load_rate,
+            'HIGH' as alert_level,
+            'ACTIVE' as status
+        FROM consecutive_groups
+        GROUP BY line_code, start_station_id, end_station_id, start_station_name, end_station_name, date_group
+        HAVING COUNT(*) &gt;= #{consecutiveDays}
+    </select>
+
+    <!-- 13. 查询过载告警 -->
+    <select id="selectOverloadAlert" resultMap="SectionDailyFlowMap">
+        SELECT * FROM overload_alert
+        WHERE line_code = #{lineCode}
+          AND start_station_id = #{startStationId}
+          AND end_station_id = #{endStationId}
+          AND alert_start_date = #{alertStartDate}
+          AND alert_end_date = #{alertEndDate}
+          AND is_deleted = 0
+    </select>
+
+    <!-- 14. 插入过载告警 -->
+    <insert id="insertOverloadAlert" parameterType="com.homework.railwayproject.pojo.entity.OverloadAlert"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO overload_alert (
+            line_code, start_station_id, end_station_id,
+            alert_start_date, alert_end_date, consecutive_days,
+            avg_load_rate, alert_level, status,
+            create_time, update_time, create_by, update_by, is_deleted
+        ) VALUES (
+                     #{lineCode}, #{startStationId}, #{endStationId},
+                     #{alertStartDate}, #{alertEndDate}, #{consecutiveDays},
+                     #{avgLoadRate}, #{alertLevel}, #{status},
+                     NOW(), NOW(), #{createBy}, #{updateBy}, 0
+                 )
+    </insert>
+
+    <!-- 15. 查询区间高峰时段 -->
+    <select id="selectPeakHoursBySection" resultType="java.util.Map">
+        SELECT
+        hour,
+        AVG(load_rate) as avg_load_rate
+        FROM section_hourly_flow
+        WHERE line_code = #{lineCode}
+        AND start_station_id = #{startStationId}
+        AND end_station_id = #{endStationId}
+        AND flow_date BETWEEN #{startDate} AND #{endDate}
+        AND is_deleted = 0
+        GROUP BY hour
+        HAVING AVG(load_rate) &gt; 80  <!-- 只返回满载率超过80%的时段 -->
+        ORDER BY avg_load_rate DESC
+        LIMIT 5  <!-- 返回前5个高峰时段 -->
+    </select>
+
+    <!-- 16. 更新过载告警状态 -->
+    <update id="updateOverloadAlertStatus">
+        UPDATE overload_alert
+        SET status = #{status},
+            update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <!-- 17. 清理旧的统计数据（保留最近30天） -->
+    <delete id="cleanOldStatistics">
+        UPDATE section_hourly_flow
+        SET is_deleted = 1, update_time = NOW()
+        WHERE flow_date &lt; DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+          AND is_deleted = 0;
+
+        UPDATE section_daily_flow
+        SET is_deleted = 1, update_time = NOW()
+        WHERE flow_date &lt; DATE_SUB(CURDATE(), INTERVAL 90 DAY)
+          AND is_deleted = 0;
+
+        UPDATE overload_alert
+        SET status = 'RESOLVED', update_time = NOW()
+        WHERE alert_end_date &lt; DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+          AND status = 'ACTIVE';
+    </delete>
+
+</mapper>

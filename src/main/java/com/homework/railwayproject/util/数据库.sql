@@ -300,3 +300,58 @@ VALUES ('繁忙指数权重 - 中转量', 'busy_index_transfer_weight', 0.0, '�
 CREATE INDEX idx_travel_date_time_site ON high_speed_passenger_clean(travel_date, depart_time, original_site_id);
 -- 添加站点等级容量配置到sensitivity_config表
 -- 配置格式：description字段存储"站台容量,检票口容量"
+-- ==================== 线路优化接口所需表（）====================
+
+-- 1. 创建区间每小时客流统计表（用于缓存计算结果）
+CREATE TABLE IF NOT EXISTS section_hourly_flow (
+                                                   id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '主键ID',
+                                                   line_code VARCHAR(50) NOT NULL COMMENT '线路编码',
+    start_station_id INT NOT NULL COMMENT '起始站ID',
+    end_station_id INT NOT NULL COMMENT '终点站ID',
+    flow_date DATE NOT NULL COMMENT '统计日期',
+    hour INT NOT NULL COMMENT '小时 (0-23)',
+    passenger_count INT NOT NULL COMMENT '客流量',
+    train_capacity INT NOT NULL COMMENT '列车总运力',
+    load_rate DECIMAL(5, 2) NOT NULL COMMENT '满载率 (%)',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    is_deleted TINYINT(1) DEFAULT 0 COMMENT '是否删除：0-未删除，1-已删除',
+    UNIQUE KEY uk_section_hour (line_code, start_station_id, end_station_id, flow_date, hour)
+    ) COMMENT '区间每小时客流统计表';
+
+-- 2. 创建区间每日客流统计表（用于7天连续判断）
+CREATE TABLE IF NOT EXISTS section_daily_flow (
+                                                  id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '主键ID',
+                                                  line_code VARCHAR(50) NOT NULL COMMENT '线路编码',
+    start_station_id INT NOT NULL COMMENT '起始站ID',
+    end_station_id INT NOT NULL COMMENT '终点站ID',
+    flow_date DATE NOT NULL COMMENT '统计日期',
+    avg_load_rate DECIMAL(5, 2) NOT NULL COMMENT '平均满载率 (%)',
+    max_load_rate DECIMAL(5, 2) NOT NULL COMMENT '最高满载率 (%)',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    is_deleted TINYINT(1) DEFAULT 0 COMMENT '是否删除：0-未删除，1-已删除',
+    UNIQUE KEY uk_section_date (line_code, start_station_id, end_station_id, flow_date)
+    ) COMMENT '区间每日客流统计表';
+
+-- 3. 创建过载告警记录表
+CREATE TABLE IF NOT EXISTS overload_alert (
+                                              id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '主键ID',
+                                              line_code VARCHAR(50) NOT NULL COMMENT '线路编码',
+    start_station_id INT NOT NULL COMMENT '起始站ID',
+    end_station_id INT NOT NULL COMMENT '终点站ID',
+    alert_start_date DATE NOT NULL COMMENT '告警开始日期',
+    alert_end_date DATE NOT NULL COMMENT '告警结束日期',
+    consecutive_days INT NOT NULL COMMENT '连续天数',
+    avg_load_rate DECIMAL(5, 2) NOT NULL COMMENT '平均满载率 (%)',
+    alert_level VARCHAR(10) DEFAULT 'HIGH' COMMENT '告警级别：HIGH-高',
+    status VARCHAR(20) DEFAULT 'ACTIVE' COMMENT '状态：ACTIVE-活跃，RESOLVED-已解决',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    is_deleted TINYINT(1) DEFAULT 0 COMMENT '是否删除：0-未删除，1-已删除'
+    ) COMMENT '过载告警记录表';
+
+-- 为过载告警表创建索引
+CREATE INDEX idx_overload_line ON overload_alert(line_code);
+CREATE INDEX idx_overload_dates ON overload_alert(alert_start_date, alert_end_date);
+CREATE INDEX idx_overload_status ON overload_alert(status);

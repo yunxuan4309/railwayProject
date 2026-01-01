@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.homework.railwayproject.mapper.LineStationMapper">
+
+    <resultMap id="LineStationMap" type="com.homework.railwayproject.pojo.entity.LineStation">
+        <id column="id" property="id"/>
+        <result column="line_code" property="lineCode"/>
+        <result column="site_id" property="siteId"/>
+        <result column="line_site_id" property="lineSiteId"/>
+        <result column="previous_site_id" property="previousSiteId"/>
+        <result column="line_distance" property="lineDistance"/>
+        <result column="next_site_id" property="nextSiteId"/>
+        <result column="is_start_station" property="isStartStation"/>
+        <result column="is_end_station" property="isEndStation"/>
+        <result column="transport_distance" property="transportDistance"/>
+        <result column="line_number" property="lineNumber"/>
+        <result column="need_stop" property="needStop"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="create_by" property="createBy"/>
+        <result column="update_by" property="updateBy"/>
+        <result column="status" property="status"/>
+        <result column="is_deleted" property="isDeleted"/>
+    </resultMap>
+
+    <!-- 按线路编码和顺序查询站点 -->
+    <select id="selectByLineCodeOrdered" resultMap="LineStationMap">
+        SELECT * FROM line_station
+        WHERE line_code = #{lineCode}
+          AND is_deleted = 0
+        ORDER BY line_site_id
+    </select>
+
+    <!-- 查询所有线路的站点（按线路和顺序排序） -->
+    <select id="selectAllWithOrder" resultMap="LineStationMap">
+        SELECT * FROM line_station
+        WHERE is_deleted = 0
+        ORDER BY line_code, line_site_id
+    </select>
+
+</mapper>
