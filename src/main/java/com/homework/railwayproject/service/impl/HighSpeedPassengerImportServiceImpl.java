@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.homework.railwayproject.mapper.HighSpeedPassengerMapper;
 import com.homework.railwayproject.mapper.HighSpeedPassengerCleanMapper;
 import com.homework.railwayproject.pojo.dto.CleaningResult;
+import com.homework.railwayproject.pojo.dto.ImportProgress;
 import com.homework.railwayproject.pojo.dto.ImportResult;
 import com.homework.railwayproject.pojo.dto.ProcessResult;
 import com.homework.railwayproject.pojo.entity.HighSpeedPassenger;
@@ -27,7 +28,11 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -46,6 +51,14 @@ public class HighSpeedPassengerImportServiceImpl implements HighSpeedPassengerIm
     private CsvDataPreprocessor csvDataPreprocessor;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    
+    // 用于跟踪导入任务进度
+    private static final Map<String, ImportProgress> importProgressMap = new ConcurrentHashMap<>();
+    
+    // 创建线程池用于异步处理
+    private final ExecutorService executorService = Executors.newFixedThreadPool(5);
+    
+    private static final int PROGRESS_UPDATE_INTERVAL = 1000; // 每处理1000条记录更新一次进度
 
     @Override
     @Transactional
@@ -902,5 +915,229 @@ public class HighSpeedPassengerImportServiceImpl implements HighSpeedPassengerIm
      */
     private boolean checkIdExistsInDatabase(Long id) {
         return highSpeedPassengerMapper.selectById(id) != null;
+    }
+    
+    @Override
+    public String importCsvDataAsync(MultipartFile file) throws Exception {
+        // 生成唯一任务ID
+        String taskId = UUID.randomUUID().toString();
+        
+        // 初始化进度对象
+        ImportProgress progress = new ImportProgress(taskId);
+        progress.setStatus(ImportProgress.STATUS_RUNNING);
+        progress.setMessage("开始解析文件...");
+        importProgressMap.put(taskId, progress);
+        
+        // 提交异步任务
+        executorService.submit(() -> {
+            try {
+                log.info("开始异步导入任务: {}，文件名: {}", taskId, file.getOriginalFilename());
+                
+                // 解析CSV文件
+                List<Map<String, String>> csvData = parseCsvFileForAsync(file, taskId);
+                int totalRecords = csvData.size();
+                
+                // 更新进度信息
+                ImportProgress currentProgress = importProgressMap.get(taskId);
+                if (currentProgress != null) {
+                    currentProgress.setTotalRecords(totalRecords);
+                    currentProgress.setProcessedRecords(0);
+                    currentProgress.setSuccessCount(0);
+                    currentProgress.setFailedCount(0);
+                    currentProgress.setMessage("开始处理数据...");
+                }
+                
+                // 转换和处理数据
+                List<HighSpeedPassenger> passengerList = new ArrayList<>();
+                Set<Long> processedIds = new HashSet<>();
+                int successCount = 0;
+                int failCount = 0;
+                int duplicateCount = 0;
+                
+                for (int i = 0; i < csvData.size(); i++) {
+                    Map<String, String> row = csvData.get(i);
+                    try {
+                        HighSpeedPassenger passenger = convertToEntity(row);
+                        Long currentId = passenger.getId();
+                        
+                        // 验证关键字段
+                        if (passenger.getOperationDate() == null) {
+                            log.warn("第{}行数据的运行日期为空，跳过此记录", i + 3); // +3因为跳过了前2行，且索引从0开始
+                            failCount++;
+                            continue; // 跳过此记录
+                        }
+                        
+                        // 检查ID是否重复
+                        if (currentId != null && processedIds.contains(currentId)) {
+                            passenger.setStatus(3);
+                            duplicateCount++;
+                        } else if (currentId != null && checkIdExistsInDatabase(currentId)) {
+                            passenger.setStatus(3);
+                            duplicateCount++;
+                        } else {
+                            // 首次出现的ID，设置为未清洗状态
+                            passenger.setStatus(0);
+                            if (currentId != null) {
+                                processedIds.add(currentId);
+                            }
+                            successCount++;
+                        }
+                        
+                        passengerList.add(passenger);
+                        
+                        // 更新进度（每处理一定数量记录更新一次）
+                        if (i > 0 && i % PROGRESS_UPDATE_INTERVAL == 0) {
+                            updateProgress(taskId, i, successCount, failCount + duplicateCount);
+                        }
+                    } catch (Exception e) {
+                        failCount++;
+                    }
+                }
+                
+                // 更新最终进度
+                updateProgress(taskId, csvData.size(), successCount, failCount + duplicateCount);
+                
+                // 批量插入数据库
+                int insertedCount = batchInsertPassengers(passengerList);
+                
+                // 更新最终进度
+                ImportProgress finalProgress = importProgressMap.get(taskId);
+                if (finalProgress != null) {
+                    finalProgress.setProcessedRecords(csvData.size());
+                    finalProgress.setSuccessCount(insertedCount);
+                    finalProgress.setFailedCount(csvData.size() - insertedCount);
+                    finalProgress.setStatus(ImportProgress.STATUS_COMPLETED);
+                    finalProgress.setMessage("导入完成，开始数据清洗...");
+                }
+                
+                // 导入完成后自动执行数据清洗
+                try {
+                    cleanData(file.getOriginalFilename());
+                    
+                    ImportProgress completeProgress = importProgressMap.get(taskId);
+                    if (completeProgress != null) {
+                        completeProgress.setMessage("导入和清洗完成");
+                    }
+                } catch (Exception e) {
+                    log.error("数据清洗失败", e);
+                    ImportProgress errorProgress = importProgressMap.get(taskId);
+                    if (errorProgress != null) {
+                        errorProgress.setStatus(ImportProgress.STATUS_FAILED);
+                        errorProgress.setMessage("导入完成，但数据清洗失败: " + e.getMessage());
+                    }
+                }
+                
+                log.info("异步导入任务完成: {}，成功: {}，失败: {}", taskId, successCount, failCount + duplicateCount);
+            } catch (Exception e) {
+                log.error("异步导入任务失败: " + taskId, e);
+                ImportProgress errorProgress = importProgressMap.get(taskId);
+                if (errorProgress != null) {
+                    errorProgress.setStatus(ImportProgress.STATUS_FAILED);
+                    errorProgress.setMessage("导入失败: " + e.getMessage());
+                }
+            }
+        });
+        
+        return taskId;
+    }
+    
+    @Override
+    public ImportProgress getImportProgress(String taskId) {
+        ImportProgress progress = importProgressMap.get(taskId);
+        if (progress == null) {
+            // 如果任务不存在，返回一个表示任务不存在的进度对象
+            ImportProgress notFoundProgress = new ImportProgress(taskId);
+            notFoundProgress.setStatus(ImportProgress.STATUS_FAILED);
+            notFoundProgress.setMessage("任务不存在或已过期");
+            return notFoundProgress;
+        }
+        return progress;
+    }
+    
+    /**
+     * 用于异步导入的CSV文件解析方法，支持进度更新
+     */
+    private List<Map<String, String>> parseCsvFileForAsync(MultipartFile file, String taskId) throws IOException {
+        List<Map<String, String>> result = new ArrayList<>();
+        
+        // 自动检测文件编码
+        Charset charset = detectCharset(file);
+        log.info("检测到文件编码: {}", charset.name());
+        
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream()))) {
+            String line;
+            boolean isFirstLine = true;
+            int lineNumber = 0;
+            String[] headers = null;
+            
+            while ((line = reader.readLine()) != null) {
+                lineNumber++;
+
+                // 第1行：跳过（无关信息）
+                if (lineNumber == 1) {
+                    continue;
+                }
+                // 第2行：解析为列名/表头
+                if (lineNumber == 2) {
+                    headers = parseCsvLine(line);
+                    log.info("解析到表头，共 {} 列", headers.length);
+                    continue;
+                }
+                // 第3行及以后：解析为数据
+                if (headers == null) {
+                    throw new IOException("未找到表头行");
+                }
+
+                // 使用更健壮的CSV解析
+                String[] values = parseCsvLine(line);
+                if (values.length < headers.length) {
+                    // 不再记录每行的字段不足警告，避免日志过多
+                }
+
+                Map<String, String> row = new HashMap<>();
+                for (int i = 0; i < headers.length; i++) {
+                    String value = (i < values.length) ? values[i] : "";
+                    // 处理 NULL 值和空值
+                    if ("NULL".equalsIgnoreCase(value) || value == null || value.trim().isEmpty()) {
+                        value = "";
+                    }
+                    row.put(headers[i], value.trim());
+                }
+                result.add(row);
+
+                // 仅记录前几行数据用于调试
+                if (lineNumber <= 3) {
+                    log.debug("第{}行数据示例: {}", lineNumber, row);
+                }
+                
+                // 每处理10000行更新一次进度
+                if (lineNumber % 10000 == 0) {
+                    ImportProgress progress = importProgressMap.get(taskId);
+                    if (progress != null) {
+                        progress.setMessage("正在解析CSV文件，已处理 " + lineNumber + " 行");
+                    }
+                }
+            }
+
+            log.info("共解析 {} 行数据", result.size());
+        }
+        return result;
+    }
+    
+    /**
+     * 更新导入进度
+     */
+    private void updateProgress(String taskId, int processedRecords, int successCount, int failedCount) {
+        ImportProgress progress = importProgressMap.get(taskId);
+        if (progress != null) {
+            progress.setProcessedRecords(processedRecords);
+            progress.setSuccessCount(successCount);
+            progress.setFailedCount(failedCount);
+            progress.setMessage(String.format("正在处理数据，进度: %.2f%%", progress.getProgressPercentage()));
+            
+            if (progress.getProcessedRecords() >= progress.getTotalRecords()) {
+                progress.setStatus(ImportProgress.STATUS_COMPLETED);
+            }
+        }
     }
 }

@@ -1,6 +1,7 @@
 package com.homework.railwayproject.service;
 
 import com.homework.railwayproject.pojo.dto.CleaningResult;
+import com.homework.railwayproject.pojo.dto.ImportProgress;
 import com.homework.railwayproject.pojo.dto.ImportResult;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -50,4 +51,40 @@ public interface HighSpeedPassengerImportService {
      * - 生成唯一的数据版本号用于追溯
      */
     CleaningResult cleanData(String filename);
+    
+    /**
+     * 异步导入CSV数据
+     * 
+     * 该方法用于异步导入高铁客运原始数据CSV文件，支持进度跟踪功能
+     * 
+     * 处理流程：
+     * 1. 生成任务ID并初始化进度状态
+     * 2. 启动异步任务执行导入操作
+     * 3. 实时更新任务进度
+     * 4. 返回任务ID供前端查询进度
+     * 
+     * @param file 上传的CSV文件，应包含高铁客运原始数据
+     * @return 任务ID，用于查询导入进度
+     * @throws Exception 任务启动过程中可能出现的异常
+     * 
+     * 业务规则：
+     * - 任务启动后立即返回任务ID
+     * - 导入过程中实时更新进度状态
+     * - 完成后自动触发数据清洗
+     */
+    String importCsvDataAsync(MultipartFile file) throws Exception;
+    
+    /**
+     * 查询导入进度
+     * 
+     * 该方法用于查询异步导入任务的进度状态
+     * 
+     * @param taskId 任务ID
+     * @return 导入进度信息，包含状态、进度百分比、处理统计等
+     * 
+     * 业务规则：
+     * - 任务不存在时返回空进度对象
+     * - 任务完成后保留结果一段时间
+     */
+    ImportProgress getImportProgress(String taskId);
 }
