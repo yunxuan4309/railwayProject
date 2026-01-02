@@ -17,4 +17,9 @@ public class LoadRateVO {
     private Integer passengerCount;    // 客流量
     private Integer trainCapacity;     // 列车总运力
     private Double loadRate;           // 满载率
+    private Integer trainCode;         // 列车编码
+    private String trainType;          // 列车类型
+    private String trainNumber;        // 车次
+    private Integer boardingCount;     // 上客量
+    private Integer alightingCount;    // 下客量
 }

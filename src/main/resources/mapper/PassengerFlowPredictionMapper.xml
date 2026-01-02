@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.homework.railwayproject.mapper.PassengerFlowPredictionMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="PassengerFlowPredictionMap" type="com.homework.railwayproject.pojo.entity.PassengerFlowPrediction">
+        <result property="predictionId" column="prediction_id"/>
+        <result property="siteId" column="site_id"/>
+        <result property="siteName" column="site_name"/>
+        <result property="predictionDate" column="prediction_date"/>
+        <result property="predictionTime" column="prediction_time"/>
+        <result property="predictedBoardingCount" column="predicted_boarding_count"/>
+        <result property="predictedAlightingCount" column="predicted_alighting_count"/>
+        <result property="predictedTotalFlow" column="predicted_total_flow"/>
+        <result property="predictionMethod" column="prediction_method"/>
+        <result property="accuracy" column="accuracy"/>
+        <result property="createTime" column="create_time"/>
+    </resultMap>
+
+    <!-- 插入客流预测数据 -->
+    <insert id="insertPrediction" parameterType="com.homework.railwayproject.pojo.entity.PassengerFlowPrediction">
+        INSERT INTO passenger_flow_prediction (
+            site_id,
+            site_name,
+            prediction_date,
+            prediction_time,
+            predicted_boarding_count,
+            predicted_alighting_count,
+            predicted_total_flow,
+            prediction_method,
+            accuracy,
+            create_time
+        ) VALUES (
+            #{siteId},
+            #{siteName},
+            #{predictionDate},
+            #{predictionTime},
+            #{predictedBoardingCount},
+            #{predictedAlightingCount},
+            #{predictedTotalFlow},
+            #{predictionMethod},
+            #{accuracy},
+            NOW()
+        )
+    </insert>
+
+    <!-- 根据站点ID和日期范围查询客流预测数据 -->
+    <select id="selectPredictionsBySiteAndDateRange" resultMap="PassengerFlowPredictionMap">
+        SELECT
+            prediction_id,
+            site_id,
+            site_name,
+            prediction_date,
+            prediction_time,
+            predicted_boarding_count,
+            predicted_alighting_count,
+            predicted_total_flow,
+            prediction_method,
+            accuracy,
+            create_time
+        FROM passenger_flow_prediction
+        WHERE site_id = #{siteId}
+          AND prediction_date BETWEEN #{startDate} AND #{endDate}
+        ORDER BY prediction_date, prediction_time
+    </select>
+
+    <!-- 根据站点ID查询最新的客流预测数据 -->
+    <select id="selectLatestPredictionsBySite" resultMap="PassengerFlowPredictionMap">
+        SELECT
+            prediction_id,
+            site_id,
+            site_name,
+            prediction_date,
+            prediction_time,
+            predicted_boarding_count,
+            predicted_alighting_count,
+            predicted_total_flow,
+            prediction_method,
+            accuracy,
+            create_time
+        FROM passenger_flow_prediction
+        WHERE site_id = #{siteId}
+        ORDER BY create_time DESC
+        LIMIT 10
+    </select>
+
+    <!-- 根据日期查询客流预测数据 -->
+    <select id="selectPredictionsByDate" resultMap="PassengerFlowPredictionMap">
+        SELECT
+            prediction_id,
+            site_id,
+            site_name,
+            prediction_date,
+            prediction_time,
+            predicted_boarding_count,
+            predicted_alighting_count,
+            predicted_total_flow,
+            prediction_method,
+            accuracy,
+            create_time
+        FROM passenger_flow_prediction
+        WHERE prediction_date = #{predictionDate}
+        ORDER BY site_id, prediction_time
+    </select>
+
+</mapper>

@@ -1,5 +1,6 @@
 package com.homework.railwayproject.controller;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.homework.railwayproject.exception.ServiceException;
 import com.homework.railwayproject.pojo.dto.SectionLoadRateQueryDTO;
 import com.homework.railwayproject.pojo.vo.LoadRateVO;
@@ -31,20 +32,36 @@ public class LineOptimizationController {
     /**
      * 1. 满载率接口
      * 计算每个区间（相邻两站之间）每小时的满载率
-     * 结果存缓存5分钟
+     * 结果存缓存2小时
      */
     @GetMapping("/load-rate/hourly")
-    @Operation(summary = "获取区间每小时满载率", description = "计算每个区间每小时的满载率，结果缓存5分钟")
-    public JsonResult<List<LoadRateVO>> getSectionLoadRateHourly(
+    @Operation(summary = "获取区间每小时满载率", description = "计算每个区间每小时的满载率，结果缓存2小时")
+    public JsonResult<IPage<LoadRateVO>> getSectionLoadRateHourly(
             @Parameter(description = "线路编码") @RequestParam(required = false) String lineCode,
             @Parameter(description = "统计日期，格式：yyyy-MM-dd")
-            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate flowDate) {
+            @RequestParam(required = true) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate flowDate,
+            @Parameter(description = "开始小时") @RequestParam(required = false) Integer startHour,
+            @Parameter(description = "结束小时") @RequestParam(required = false) Integer endHour,
+            @Parameter(description = "起始站ID") @RequestParam(required = false) Integer startStationId,
+            @Parameter(description = "终点站ID") @RequestParam(required = false) Integer endStationId,
+            @Parameter(description = "起始站名称") @RequestParam(required = false) String startStationName,
+            @Parameter(description = "终点站名称") @RequestParam(required = false) String endStationName,
+            @Parameter(description = "页码，从1开始") @RequestParam(required = false, defaultValue = "1") Integer page,
+            @Parameter(description = "每页大小") @RequestParam(required = false, defaultValue = "10") Integer size) {
         try {
             SectionLoadRateQueryDTO query = new SectionLoadRateQueryDTO();
             query.setLineCode(lineCode);
             query.setFlowDate(flowDate);
+            query.setStartHour(startHour);
+            query.setEndHour(endHour);
+            query.setStartStationId(startStationId);
+            query.setEndStationId(endStationId);
+            query.setStartStationName(startStationName);
+            query.setEndStationName(endStationName);
+            query.setPage(page);
+            query.setSize(size);
 
-            List<LoadRateVO> result = lineOptimizationService.calculateSectionLoadRate(query);
+            IPage<LoadRateVO> result = lineOptimizationService.getSectionLoadRateWithPaging(query);
             return JsonResult.ok(result);
         } catch (Exception e) {
             log.error("获取区间满载率失败", e);
@@ -93,7 +110,7 @@ public class LineOptimizationController {
     @Operation(summary = "触发区间客流统计", description = "手动触发区间客流统计任务")
     public JsonResult<String> triggerStatistics(
             @Parameter(description = "统计日期，格式：yyyy-MM-dd")
-            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate flowDate) {
+            @RequestParam(required = true) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate flowDate) {
         try {
             lineOptimizationService.calculateAndSaveSectionStatistics(flowDate);
             return JsonResult.ok("区间客流统计任务已启动");

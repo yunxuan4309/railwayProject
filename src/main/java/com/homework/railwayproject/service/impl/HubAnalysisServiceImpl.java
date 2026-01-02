@@ -3,13 +3,17 @@ package com.homework.railwayproject.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.homework.railwayproject.mapper.HighSpeedPassengerCleanMapper;
 import com.homework.railwayproject.mapper.StationMapper;
+import com.homework.railwayproject.mapper.TrainMapper;
 import com.homework.railwayproject.pojo.dto.HubQueryDTO;
 import com.homework.railwayproject.pojo.dto.HubResultDTO;
 import com.homework.railwayproject.pojo.entity.HighSpeedPassengerClean;
 import com.homework.railwayproject.pojo.entity.Station;
+import com.homework.railwayproject.pojo.entity.Train;
 import com.homework.railwayproject.service.HubAnalysisService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -27,24 +31,76 @@ public class HubAnalysisServiceImpl implements HubAnalysisService {
 
     @Autowired
     private StationMapper stationMapper;
+    
+    @Autowired
+    private TrainMapper trainMapper;
+    
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate;
 
     @Override
     public List<HubResultDTO> getTopHubs(HubQueryDTO queryDTO) {
         String trainType = queryDTO.getTrainType();
         Integer topN = queryDTO.getTopN() != null ? queryDTO.getTopN() : 10;
-
+        
+        // 生成缓存key
+        String cacheKey = generateCacheKey(trainType, topN);
+        
+        // 尝试从缓存获取
+        ValueOperations<String, Object> ops = redisTemplate.opsForValue();
+        List<HubResultDTO> cachedResult = (List<HubResultDTO>) ops.get(cacheKey);
+        if (cachedResult != null) {
+            log.debug("从缓存获取枢纽分析结果: {}", cacheKey);
+            return cachedResult;
+        }
+        
+        // 缓存未命中，执行计算逻辑
+        List<HubResultDTO> result = computeHubAnalysis(trainType, topN);
+        
+        // 存入缓存，有效期2小时
+        ops.set(cacheKey, result, 2, java.util.concurrent.TimeUnit.HOURS);
+        
+        return result;
+    }
+    
+    /**
+     * 生成缓存key
+     */
+    private String generateCacheKey(String trainType, Integer topN) {
+        String type = trainType != null ? trainType : "all";
+        return "hub:top:" + type + ":" + topN;
+    }
+    
+    /**
+     * 执行枢纽分析计算逻辑
+     */
+    private List<HubResultDTO> computeHubAnalysis(String trainType, Integer topN) {
+        // 根据trainType筛选符合条件的trainCode列表
+        List<Integer> filteredTrainCodes = new ArrayList<>();
+        if (StringUtils.hasText(trainType)) {
+            LambdaQueryWrapper<Train> trainWrapper = new LambdaQueryWrapper<>();
+            trainWrapper.eq(Train::getIsDeleted, 0);
+            
+            if ("高铁".equals(trainType)) {
+                trainWrapper.like(Train::getTrainId, "G%");
+            } else if ("城际".equals(trainType)) {
+                trainWrapper.like(Train::getTrainId, "C%");
+            } else if ("普速".equals(trainType)) {
+                trainWrapper.notLike(Train::getTrainId, "G%")
+                       .notLike(Train::getTrainId, "C%");
+            }
+            
+            List<Train> trains = trainMapper.selectList(trainWrapper);
+            for (Train train : trains) {
+                filteredTrainCodes.add(train.getTrainCode());
+            }
+        }
+        
         LambdaQueryWrapper<HighSpeedPassengerClean> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(HighSpeedPassengerClean::getIsDeleted, 0);
-
-        if (StringUtils.hasText(trainType)) {
-            if ("高铁".equals(trainType)) {
-                wrapper.likeRight(HighSpeedPassengerClean::getTrainCode, "G");
-            } else if ("城际".equals(trainType)) {
-                wrapper.likeRight(HighSpeedPassengerClean::getTrainCode, "C");
-            } else if ("普速".equals(trainType)) {
-                wrapper.notLikeRight(HighSpeedPassengerClean::getTrainCode, "G")
-                       .notLikeRight(HighSpeedPassengerClean::getTrainCode, "C");
-            }
+        
+        if (!filteredTrainCodes.isEmpty()) {
+            wrapper.in(HighSpeedPassengerClean::getTrainCode, filteredTrainCodes);
         }
 
         List<HighSpeedPassengerClean> tickets = highSpeedPassengerCleanMapper.selectList(wrapper);
@@ -94,8 +150,13 @@ public class HubAnalysisServiceImpl implements HubAnalysisService {
             dto.setBetweennessCentrality(betweennessMap.getOrDefault(siteId, BigDecimal.ZERO));
             dto.setTrainType(trainType != null ? trainType : "全部");
 
-            BigDecimal score = BigDecimal.valueOf(degreeMap.get(siteId) * 0.5)
-                    .add(betweennessMap.getOrDefault(siteId, BigDecimal.ZERO).multiply(BigDecimal.valueOf(1000)));
+            // 调整评分计算公式，使枢纽级别更有区分度
+            // 度中心性需要标准化处理，避免因数值过大导致所有站点都是特级枢纽
+            // 使用对数缩放以增强区分度：log(度中心性 + 1) * 10
+            BigDecimal degreeScore = new BigDecimal(Math.log(degreeMap.get(siteId) + 1)).multiply(BigDecimal.valueOf(10));
+            // 介数中心性保持原有计算方式
+            BigDecimal betweennessScore = betweennessMap.getOrDefault(siteId, BigDecimal.ZERO).multiply(BigDecimal.valueOf(1000));
+            BigDecimal score = degreeScore.add(betweennessScore);
             dto.setHubLevel(calculateHubLevel(score));
 
             results.add(dto);
@@ -187,15 +248,15 @@ public class HubAnalysisServiceImpl implements HubAnalysisService {
     }
 
     private String calculateHubLevel(BigDecimal score) {
-        if (score.compareTo(BigDecimal.valueOf(1000)) >= 0) {
+        if (score.compareTo(BigDecimal.valueOf(200)) >= 0) {
             return "特级枢纽";
-        } else if (score.compareTo(BigDecimal.valueOf(500)) >= 0) {
+        } else if (score.compareTo(BigDecimal.valueOf(150)) >= 0) {
             return "一级枢纽";
-        } else if (score.compareTo(BigDecimal.valueOf(200)) >= 0) {
-            return "二级枢纽";
         } else if (score.compareTo(BigDecimal.valueOf(100)) >= 0) {
-            return "三级枢纽";
+            return "二级枢纽";
         } else if (score.compareTo(BigDecimal.valueOf(50)) >= 0) {
+            return "三级枢纽";
+        } else if (score.compareTo(BigDecimal.valueOf(20)) >= 0) {
             return "四级枢纽";
         } else {
             return "五级枢纽";

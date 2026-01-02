@@ -300,6 +300,10 @@ VALUES ('繁忙指数权重 - 中转量', 'busy_index_transfer_weight', 0.0, '�
 CREATE INDEX idx_travel_date_time_site ON high_speed_passenger_clean(travel_date, depart_time, original_site_id);
 -- 添加站点等级容量配置到sensitivity_config表
 -- 配置格式：description字段存储"站台容量,检票口容量"
+
+
+
+-- 以下数据库表格不使用
 -- ==================== 线路优化接口所需表（）====================
 
 -- 1. 创建区间每小时客流统计表（用于缓存计算结果）

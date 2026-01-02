@@ -84,4 +84,88 @@
         </foreach>
     </insert>
 
+    <select id="queryTicketsWithConditions" resultType="com.homework.railwayproject.pojo.dto.TicketResultDTO">
+        SELECT
+            hspc.ticket_id as ticketId,
+            hspc.train_code as trainCode,
+            t.train_id as trainNumber,
+            hspc.origin_station as originStation,
+            hspc.dest_station as destStation,
+            hspc.depart_time as departTime,
+            hspc.ticket_type as ticketType,
+            hspc.seat_type_code as seatTypeCode,
+            hspc.train_company_code as trainCompanyCode,
+            hspc.ticket_price as ticketPrice
+        FROM high_speed_passenger_clean hspc
+        LEFT JOIN train t ON hspc.train_code = t.train_code
+        WHERE hspc.is_deleted = 0
+        <if test="queryDTO.startDate != null">
+            AND hspc.travel_date >= #{queryDTO.startDate}
+        </if>
+        <if test="queryDTO.endDate != null">
+            AND hspc.travel_date &lt;= #{queryDTO.endDate}
+        </if>
+        <if test="queryDTO.trainNumber != null and queryDTO.trainNumber != ''">
+            AND t.train_id LIKE CONCAT('%', #{queryDTO.trainNumber}, '%')
+        </if>
+        <if test="queryDTO.originStation != null and queryDTO.originStation != ''">
+            AND hspc.origin_station LIKE CONCAT('%', #{queryDTO.originStation}, '%')
+        </if>
+        <if test="queryDTO.destStation != null and queryDTO.destStation != ''">
+            AND hspc.dest_station LIKE CONCAT('%', #{queryDTO.destStation}, '%')
+        </if>
+        <if test="queryDTO.ticketType != null">
+            AND hspc.ticket_type = #{queryDTO.ticketType}
+        </if>
+        <if test="queryDTO.trainType != null and queryDTO.trainType != ''">
+            <choose>
+                <when test="queryDTO.trainType == '高铁'">
+                    AND (t.train_id LIKE 'G%' OR t.train_id LIKE 'g%')
+                </when>
+                <when test="queryDTO.trainType == '城际'">
+                    AND (t.train_id LIKE 'C%' OR t.train_id LIKE 'c%')
+                </when>
+                <when test="queryDTO.trainType == '普速'">
+                    AND t.train_id NOT LIKE 'G%' 
+                    AND t.train_id NOT LIKE 'g%' 
+                    AND t.train_id NOT LIKE 'C%' 
+                    AND t.train_id NOT LIKE 'c%'
+                </when>
+            </choose>
+        </if>
+        <if test="queryDTO.trainTypeCode != null and queryDTO.trainTypeCode != ''">
+            AND hspc.train_type_code = #{queryDTO.trainTypeCode}
+        </if>
+        <if test="queryDTO.seatTypeCode != null and queryDTO.seatTypeCode != ''">
+            AND hspc.seat_type_code = #{queryDTO.seatTypeCode}
+        </if>
+        ORDER BY hspc.travel_date DESC, hspc.depart_time DESC
+    </select>
+
+    <select id="selectDistinctTicketTypes" resultType="java.lang.Integer">
+        SELECT DISTINCT ticket_type
+        FROM high_speed_passenger_clean
+        WHERE ticket_type IS NOT NULL
+        AND is_deleted = 0
+        ORDER BY ticket_type
+    </select>
+
+    <select id="selectDistinctSeatTypes" resultType="java.lang.String">
+        SELECT DISTINCT seat_type_code
+        FROM high_speed_passenger_clean
+        WHERE seat_type_code IS NOT NULL
+        AND seat_type_code != ''
+        AND is_deleted = 0
+        ORDER BY seat_type_code
+    </select>
+
+    <select id="selectDistinctTrainLevelTypes" resultType="java.lang.String">
+        SELECT DISTINCT train_level_code
+        FROM high_speed_passenger_clean
+        WHERE train_level_code IS NOT NULL
+        AND train_level_code != ''
+        AND is_deleted = 0
+        ORDER BY train_level_code
+    </select>
+
 </mapper>

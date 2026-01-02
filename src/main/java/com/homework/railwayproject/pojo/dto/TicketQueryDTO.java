@@ -11,13 +11,7 @@ public class TicketQueryDTO {
 
     private LocalDate endDate;
 
-    private Integer trainCode;
-
-    private String operationLineCode;
-
-    private Integer departStationId;
-
-    private Integer arriveStationId;
+    private String trainNumber; // 替换trainCode，用于查询列车车次
 
     private String originStation;
 
@@ -25,9 +19,11 @@ public class TicketQueryDTO {
 
     private Integer ticketType;
 
-    private String trainLevelCode;
+    private String trainType; // 替换trainLevelCode，用于查询列车类型（高铁/城际/普速）
 
     private String trainTypeCode;
+
+    private String seatTypeCode; // 新增座位类型查询
 
     private Integer current;
 

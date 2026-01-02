@@ -61,5 +61,23 @@
         WHERE s.site_id = #{siteId}
         GROUP BY s.site_id, s.station_name
     </select>
+    
+    <!-- 获取用于客流预测的历史数据 -->
+    <select id="getHistoricalDataForPrediction" resultType="com.homework.railwayproject.pojo.dto.HistoricalPassengerFlowData">
+        SELECT 
+            hspc.depart_time as departTime,
+            COALESCE(SUM(hspc.boarding_count), 0) as boardingCount,
+            COALESCE(SUM(hspc.alighting_count), 0) as alightingCount,
+            hspc.travel_date as travelDate
+        FROM station s
+        LEFT JOIN high_speed_passenger_clean hspc ON (
+            s.site_id = hspc.original_site_id
+            AND hspc.travel_date >= #{startDate}
+            AND hspc.travel_date &lt;= #{endDate}
+        )
+        WHERE s.site_id = #{siteId}
+        GROUP BY hspc.travel_date, hspc.depart_time
+        ORDER BY hspc.travel_date, hspc.depart_time
+    </select>
 
 </mapper>

@@ -155,4 +155,15 @@ public class StationServiceImpl extends ServiceImpl<StationMapper, Station> impl
 
         return result;
     }
+
+    @Override
+    public List<Station> searchStationsByName(String stationName) {
+        LambdaQueryWrapper<Station> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Station::getIsDeleted, 0);
+        if (StringUtils.hasText(stationName)) {
+            wrapper.like(Station::getStationName, stationName);
+        }
+        wrapper.orderByAsc(Station::getStationName);
+        return list(wrapper);
+    }
 }

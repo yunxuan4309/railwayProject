@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 //Time:20:34
 @Data
 public class Train extends BaseEntity implements Serializable {
+    private Long id;                  // 主键ID
     private Integer trainCode;        // 列车编码
     private String uplineCode;        // 上行线编码
     private Integer transportModeCode; // 运输方式编码
@@ -19,5 +20,4 @@ public class Train extends BaseEntity implements Serializable {
     private String trainId;           // 车次
     private Integer isOfficial;       // 是否正图
     private Integer trainCapacity;    // 列车运量
-
 }

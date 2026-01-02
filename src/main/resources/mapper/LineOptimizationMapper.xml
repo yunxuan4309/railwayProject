@@ -48,14 +48,18 @@
         <result column="end_station_name" property="endStationName"/>
         <result column="flow_date" property="flowDate"/>
         <result column="hour" property="hour"/>
-        <result column="time_range" property="timeRange"/>
+
         <result column="passenger_count" property="passengerCount"/>
         <result column="train_capacity" property="trainCapacity"/>
         <result column="load_rate" property="loadRate"/>
+        <result column="train_code" property="trainCode"/>
+        <result column="train_number" property="trainType"/>
+        <result column="train_number" property="trainNumber"/>
+        <result column="boarding_count" property="boardingCount"/>
+        <result column="alighting_count" property="alightingCount"/>
     </resultMap>
 
     <resultMap id="OverloadAlertVOMap" type="com.homework.railwayproject.pojo.vo.OverloadAlertVO">
-        <id column="id" property="id"/>
         <result column="line_code" property="lineCode"/>
         <result column="start_station_id" property="startStationId"/>
         <result column="end_station_id" property="endStationId"/>
@@ -68,6 +72,24 @@
         <result column="avg_load_rate" property="avgLoadRate"/>
         <result column="alert_level" property="alertLevel"/>
         <result column="status" property="status"/>
+    </resultMap>
+
+    <resultMap id="OverloadAlertMap" type="com.homework.railwayproject.pojo.entity.OverloadAlert">
+        <id column="id" property="id"/>
+        <result column="line_code" property="lineCode"/>
+        <result column="start_station_id" property="startStationId"/>
+        <result column="end_station_id" property="endStationId"/>
+        <result column="alert_start_date" property="alertStartDate"/>
+        <result column="alert_end_date" property="alertEndDate"/>
+        <result column="consecutive_days" property="consecutiveDays"/>
+        <result column="avg_load_rate" property="avgLoadRate"/>
+        <result column="alert_level" property="alertLevel"/>
+        <result column="status" property="status"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="create_by" property="createBy"/>
+        <result column="update_by" property="updateBy"/>
+        <result column="is_deleted" property="isDeleted"/>
     </resultMap>
 
     <!-- 1. 查询区间满载率 -->
@@ -176,7 +198,36 @@
         AND h.travel_date = #{flowDate}
         )
         ) as train_capacity,
-        0 as load_rate  <!-- 需要后续计算 -->
+        CASE 
+            WHEN (
+                SELECT IFNULL(AVG(train_capacity), 500)
+                FROM train t
+                WHERE t.is_deleted = 0
+                AND EXISTS (
+                SELECT 1 FROM high_speed_passenger_clean h
+                WHERE h.train_code = t.train_code
+                AND h.travel_date = #{flowDate}
+                )
+            ) &gt; 0 
+            THEN (IFNULL(SUM(
+        CASE
+        WHEN hspc.depart_time &gt;= CONCAT(LPAD(#{hour}, 2, '0'), ':00:00')
+        AND hspc.depart_time &lt; CONCAT(LPAD(#{hour} + 1, 2, '0'), ':00:00')
+        THEN hspc.boarding_count
+        ELSE 0
+        END
+        ), 0) / (
+                SELECT IFNULL(AVG(train_capacity), 500)
+                FROM train t
+                WHERE t.is_deleted = 0
+                AND EXISTS (
+                SELECT 1 FROM high_speed_passenger_clean h
+                WHERE h.train_code = t.train_code
+                AND h.travel_date = #{flowDate}
+                )
+            )) * 100
+            ELSE 0
+        END as load_rate
         FROM line_station ls
         INNER JOIN line_station ls2 ON ls.line_code = ls2.line_code
         AND ls2.line_site_id = ls.line_site_id + 1
@@ -307,7 +358,7 @@
     </select>
 
     <!-- 13. 查询过载告警 -->
-    <select id="selectOverloadAlert" resultMap="SectionDailyFlowMap">
+    <select id="selectOverloadAlert" resultMap="OverloadAlertMap">
         SELECT * FROM overload_alert
         WHERE line_code = #{lineCode}
           AND start_station_id = #{startStationId}
@@ -345,9 +396,9 @@
         AND flow_date BETWEEN #{startDate} AND #{endDate}
         AND is_deleted = 0
         GROUP BY hour
-        HAVING AVG(load_rate) &gt; 80  <!-- 只返回满载率超过80%的时段 -->
+        HAVING AVG(load_rate) &gt; 80
         ORDER BY avg_load_rate DESC
-        LIMIT 5  <!-- 返回前5个高峰时段 -->
+        LIMIT 5
     </select>
 
     <!-- 16. 更新过载告警状态 -->
@@ -375,5 +426,196 @@
         WHERE alert_end_date &lt; DATE_SUB(CURDATE(), INTERVAL 7 DAY)
           AND status = 'ACTIVE';
     </delete>
+
+    <!-- 18. 直接从清洗表查询区间满载率数据 -->
+    <select id="selectSectionLoadRateFromCleanData" parameterType="com.homework.railwayproject.pojo.dto.SectionLoadRateQueryDTO"
+            resultMap="LoadRateVOMap">
+        SELECT
+            hspc.operation_line_code as line_code,
+            hspc.depart_station_id as start_station_id,
+            hspc.arrive_station_id as end_station_id,
+            s1.station_name as start_station_name,
+            s2.station_name as end_station_name,
+            hspc.travel_date as flow_date,
+            HOUR(hspc.depart_time) as hour,
+            COALESCE(SUM(hspc.boarding_count), 0) as passenger_count,
+            t.train_capacity as train_capacity,
+            CASE 
+                WHEN t.train_capacity &gt; 0 
+                THEN (SUM(hspc.boarding_count) * 100.0 / t.train_capacity)
+                ELSE 0 
+            END as load_rate,
+            t.train_code as train_code,
+            t.train_number as train_type,
+            t.train_id as train_number,
+            SUM(hspc.boarding_count) as boarding_count,
+            SUM(hspc.alighting_count) as alighting_count
+        FROM high_speed_passenger_clean hspc
+        LEFT JOIN station s1 ON hspc.depart_station_id = s1.site_id
+        LEFT JOIN station s2 ON hspc.arrive_station_id = s2.site_id
+        LEFT JOIN train t ON hspc.train_code = t.train_code
+        WHERE hspc.is_deleted = 0
+            AND t.is_deleted = 0
+        <if test="query.lineCode != null and query.lineCode != ''">
+            AND hspc.operation_line_code = #{query.lineCode}
+        </if>
+        <if test="query.flowDate != null">
+            AND hspc.travel_date = #{query.flowDate}
+        </if>
+        <if test="query.startHour != null">
+            AND HOUR(hspc.depart_time) &gt;= #{query.startHour}
+        </if>
+        <if test="query.endHour != null">
+            AND HOUR(hspc.depart_time) &lt;= #{query.endHour}
+        </if>
+        <if test="query.startStationId != null">
+            AND hspc.depart_station_id = #{query.startStationId}
+        </if>
+        <if test="query.endStationId != null">
+            AND hspc.arrive_station_id = #{query.endStationId}
+        </if>
+        <if test="query.startStationName != null and query.startStationName != ''">
+            AND s1.station_name = #{query.startStationName}
+        </if>
+        <if test="query.endStationName != null and query.endStationName != ''">
+            AND s2.station_name = #{query.endStationName}
+        </if>
+        GROUP BY 
+            hspc.operation_line_code,
+            hspc.depart_station_id,
+            hspc.arrive_station_id,
+            hspc.travel_date,
+            HOUR(hspc.depart_time),
+            t.train_capacity,
+            t.train_code,
+            t.train_number,
+            t.train_id,
+            s1.station_name,
+            s2.station_name
+        HAVING passenger_count &gt; 0
+        ORDER BY hspc.operation_line_code, hspc.depart_station_id, HOUR(hspc.depart_time)
+    </select>
+
+    <!-- 19. 直接从清洗表查询区间满载率数据（支持分页） -->
+    <select id="selectSectionLoadRateFromCleanDataWithPaging" parameterType="java.util.Map"
+            resultMap="LoadRateVOMap">
+        SELECT
+            hspc.operation_line_code as line_code,
+            hspc.depart_station_id as start_station_id,
+            hspc.arrive_station_id as end_station_id,
+            s1.station_name as start_station_name,
+            s2.station_name as end_station_name,
+            hspc.travel_date as flow_date,
+            HOUR(hspc.depart_time) as hour,
+            COALESCE(SUM(hspc.boarding_count), 0) as passenger_count,
+            t.train_capacity as train_capacity,
+            CASE 
+                WHEN t.train_capacity &gt; 0 
+                THEN (SUM(hspc.boarding_count) * 100.0 / t.train_capacity)
+                ELSE 0 
+            END as load_rate,
+            t.train_code as train_code,
+            t.train_number as train_type,
+            t.train_id as train_number,
+            SUM(hspc.boarding_count) as boarding_count,
+            SUM(hspc.alighting_count) as alighting_count
+        FROM high_speed_passenger_clean hspc
+        LEFT JOIN station s1 ON hspc.depart_station_id = s1.site_id
+        LEFT JOIN station s2 ON hspc.arrive_station_id = s2.site_id
+        LEFT JOIN train t ON hspc.train_code = t.train_code
+        WHERE hspc.is_deleted = 0
+            AND t.is_deleted = 0
+        <if test="params.query.lineCode != null and params.query.lineCode != ''">
+            AND hspc.operation_line_code = #{params.query.lineCode}
+        </if>
+        <if test="params.query.flowDate != null">
+            AND hspc.travel_date = #{params.query.flowDate}
+        </if>
+        <if test="params.query.startHour != null">
+            AND HOUR(hspc.depart_time) &gt;= #{params.query.startHour}
+        </if>
+        <if test="params.query.endHour != null">
+            AND HOUR(hspc.depart_time) &lt;= #{params.query.endHour}
+        </if>
+        <if test="params.query.startStationId != null">
+            AND hspc.depart_station_id = #{params.query.startStationId}
+        </if>
+        <if test="params.query.endStationId != null">
+            AND hspc.arrive_station_id = #{params.query.endStationId}
+        </if>
+        <if test="params.query.startStationName != null and params.query.startStationName != ''">
+            AND s1.station_name = #{params.query.startStationName}
+        </if>
+        <if test="params.query.endStationName != null and params.query.endStationName != ''">
+            AND s2.station_name = #{params.query.endStationName}
+        </if>
+        GROUP BY 
+            hspc.operation_line_code,
+            hspc.depart_station_id,
+            hspc.arrive_station_id,
+            hspc.travel_date,
+            HOUR(hspc.depart_time),
+            t.train_capacity,
+            t.train_code,
+            t.train_number,
+            t.train_id,
+            s1.station_name,
+            s2.station_name
+        HAVING passenger_count &gt; 0
+        ORDER BY hspc.operation_line_code, hspc.depart_station_id, HOUR(hspc.depart_time)
+        LIMIT #{params.query.size} OFFSET #{params.offset}
+    </select>
+
+    <!-- 20. 查询区间满载率数据总数 -->
+    <select id="selectSectionLoadRateCount" parameterType="com.homework.railwayproject.pojo.dto.SectionLoadRateQueryDTO"
+            resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM (
+            SELECT hspc.operation_line_code, hspc.depart_station_id, hspc.arrive_station_id, hspc.travel_date, HOUR(hspc.depart_time)
+            FROM high_speed_passenger_clean hspc
+            LEFT JOIN station s1 ON hspc.depart_station_id = s1.site_id
+            LEFT JOIN station s2 ON hspc.arrive_station_id = s2.site_id
+            LEFT JOIN train t ON hspc.train_code = t.train_code
+            WHERE hspc.is_deleted = 0
+                AND t.is_deleted = 0
+            <if test="query.lineCode != null and query.lineCode != ''">
+                AND hspc.operation_line_code = #{query.lineCode}
+            </if>
+            <if test="query.flowDate != null">
+                AND hspc.travel_date = #{query.flowDate}
+            </if>
+            <if test="query.startHour != null">
+                AND HOUR(hspc.depart_time) &gt;= #{query.startHour}
+            </if>
+            <if test="query.endHour != null">
+                AND HOUR(hspc.depart_time) &lt;= #{query.endHour}
+            </if>
+            <if test="query.startStationId != null">
+                AND hspc.depart_station_id = #{query.startStationId}
+            </if>
+            <if test="query.endStationId != null">
+                AND hspc.arrive_station_id = #{query.endStationId}
+            </if>
+            <if test="query.startStationName != null and query.startStationName != ''">
+                AND s1.station_name = #{query.startStationName}
+            </if>
+            <if test="query.endStationName != null and query.endStationName != ''">
+                AND s2.station_name = #{query.endStationName}
+            </if>
+            GROUP BY 
+                hspc.operation_line_code,
+                hspc.depart_station_id,
+                hspc.arrive_station_id,
+                hspc.travel_date,
+                HOUR(hspc.depart_time),
+                t.train_capacity,
+                t.train_code,
+                t.train_number,
+                t.train_id,
+                s1.station_name,
+                s2.station_name
+            HAVING COALESCE(SUM(hspc.boarding_count), 0) &gt; 0
+        ) AS total_count
+    </select>
 
 </mapper>

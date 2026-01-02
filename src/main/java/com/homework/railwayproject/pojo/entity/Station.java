@@ -13,6 +13,7 @@ import java.time.LocalDateTime;
 //Time:20:29
 @Data
 public class Station extends BaseEntity implements Serializable {
+    private Long id;                  // 主键ID
     private Integer siteId;           // 站点id
     private Integer typeId;           // 类型id
     private Integer transportModeCode; // 运输方式编码

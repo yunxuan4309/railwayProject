@@ -12,6 +12,8 @@ public class TicketResultDTO {
 
     private Integer trainCode;
 
+    private String trainNumber; // 新增：车次
+
     private String originStation;
 
     private String destStation;
@@ -19,6 +21,10 @@ public class TicketResultDTO {
     private LocalTime departTime;
 
     private Integer ticketType;
+
+    private String seatTypeCode; // 新增：座位类型
+
+    private String trainCompanyCode; // 新增：列车公司码
 
     private BigDecimal ticketPrice;
 }

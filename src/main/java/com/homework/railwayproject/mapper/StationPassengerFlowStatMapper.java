@@ -1,5 +1,6 @@
 package com.homework.railwayproject.mapper;
 
+import com.homework.railwayproject.pojo.dto.HistoricalPassengerFlowData;
 import com.homework.railwayproject.pojo.entity.StationPassengerFlowStat;
 import org.apache.ibatis.annotations.Mapper;
 import org.springframework.data.repository.query.Param;
@@ -33,11 +34,23 @@ public interface StationPassengerFlowStatMapper {
                                                            @Param("startDate") LocalDate startDate,
                                                            @Param("endDate") LocalDate endDate);
                                                            
-/**
- * 获取指定站点的客流统计数据
- *
- * @param siteId 站点ID
- * @return 站点客流统计数据
- */
+    /**
+     * 获取指定站点的客流统计数据
+     *
+     * @param siteId 站点ID
+     * @return 站点客流统计数据
+     */
     StationPassengerFlowStat getStationPassengerFlow(Integer siteId);
+    
+    /**
+     * 获取用于客流预测的历史数据
+     * 
+     * @param siteId 站点ID
+     * @param startDate 开始日期
+     * @param endDate 结束日期
+     * @return 历史数据列表，包含[时段, 上客量, 下客量, 日期]
+     */
+    List<HistoricalPassengerFlowData> getHistoricalDataForPrediction(@Param("siteId") Integer siteId,
+                                                                     @Param("startDate") LocalDate startDate,
+                                                                     @Param("endDate") LocalDate endDate);
 }

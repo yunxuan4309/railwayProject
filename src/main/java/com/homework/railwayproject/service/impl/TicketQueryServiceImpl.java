@@ -1,6 +1,5 @@
 package com.homework.railwayproject.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -10,6 +9,7 @@ import com.homework.railwayproject.pojo.dto.TicketResultDTO;
 import com.homework.railwayproject.pojo.entity.HighSpeedPassengerClean;
 import com.homework.railwayproject.service.TicketQueryService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -17,87 +17,35 @@ import org.springframework.util.StringUtils;
 @Service
 public class TicketQueryServiceImpl extends ServiceImpl<HighSpeedPassengerCleanMapper, HighSpeedPassengerClean> implements TicketQueryService {
 
+    @Autowired
+    private HighSpeedPassengerCleanMapper passengerCleanMapper;
+
     @Override
     public IPage<TicketResultDTO> queryTickets(TicketQueryDTO queryDTO) {
-        LambdaQueryWrapper<HighSpeedPassengerClean> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(HighSpeedPassengerClean::getIsDeleted, 0);
-
+        // 添加调试日志
+        log.info("TicketQueryServiceImpl.queryTickets() - 查询参数: {}", queryDTO);
+        
         if (queryDTO.getStartDate() != null) {
-            wrapper.ge(HighSpeedPassengerClean::getTravelDate, queryDTO.getStartDate());
+            log.info("开始日期: {}", queryDTO.getStartDate());
         }
-
         if (queryDTO.getEndDate() != null) {
-            wrapper.le(HighSpeedPassengerClean::getTravelDate, queryDTO.getEndDate());
+            log.info("结束日期: {}", queryDTO.getEndDate());
         }
-
-        if (queryDTO.getTrainCode() != null) {
-            wrapper.eq(HighSpeedPassengerClean::getTrainCode, queryDTO.getTrainCode());
+        if (queryDTO.getTrainType() != null) {
+            log.info("列车类型: {}", queryDTO.getTrainType());
         }
-
-        if (StringUtils.hasText(queryDTO.getOperationLineCode())) {
-            wrapper.eq(HighSpeedPassengerClean::getOperationLineCode, queryDTO.getOperationLineCode());
-        }
-
-        if (queryDTO.getDepartStationId() != null) {
-            wrapper.eq(HighSpeedPassengerClean::getDepartStationId, queryDTO.getDepartStationId());
-        }
-
-        if (queryDTO.getArriveStationId() != null) {
-            wrapper.eq(HighSpeedPassengerClean::getArriveStationId, queryDTO.getArriveStationId());
-        }
-
-        if (StringUtils.hasText(queryDTO.getOriginStation())) {
-            wrapper.like(HighSpeedPassengerClean::getOriginStation, queryDTO.getOriginStation());
-        }
-
-        if (StringUtils.hasText(queryDTO.getDestStation())) {
-            wrapper.like(HighSpeedPassengerClean::getDestStation, queryDTO.getDestStation());
-        }
-
-        if (queryDTO.getTicketType() != null) {
-            wrapper.eq(HighSpeedPassengerClean::getTicketType, queryDTO.getTicketType());
-        }
-
-        if (StringUtils.hasText(queryDTO.getTrainLevelCode())) {
-            wrapper.eq(HighSpeedPassengerClean::getTrainLevelCode, queryDTO.getTrainLevelCode());
-        }
-
-        if (StringUtils.hasText(queryDTO.getTrainTypeCode())) {
-            wrapper.eq(HighSpeedPassengerClean::getTrainTypeCode, queryDTO.getTrainTypeCode());
-        }
-
-        wrapper.orderByDesc(HighSpeedPassengerClean::getTravelDate);
-        wrapper.orderByDesc(HighSpeedPassengerClean::getDepartTime);
-
-        wrapper.select(
-            HighSpeedPassengerClean::getTicketId,
-            HighSpeedPassengerClean::getTrainCode,
-            HighSpeedPassengerClean::getOriginStation,
-            HighSpeedPassengerClean::getDestStation,
-            HighSpeedPassengerClean::getDepartTime,
-            HighSpeedPassengerClean::getTicketType,
-            HighSpeedPassengerClean::getTicketPrice
-        );
-
+        
+        // 构建查询条件
         Integer current = queryDTO.getCurrent() != null ? queryDTO.getCurrent() : Integer.valueOf(1);
         Integer size = queryDTO.getSize() != null ? queryDTO.getSize() : Integer.valueOf(10);
         Page<HighSpeedPassengerClean> page = new Page<>(current, size);
 
-        IPage<HighSpeedPassengerClean> result = page(page, wrapper);
+        // 调用Mapper方法执行自定义查询
+        IPage<TicketResultDTO> result = passengerCleanMapper.queryTicketsWithConditions(page, queryDTO);
+        
+        log.info("查询结果总数: {}", result.getTotal());
+        log.info("查询结果记录数: {}", result.getRecords().size());
 
-        Page<TicketResultDTO> resultPage = new Page<>(result.getCurrent(), result.getSize(), result.getTotal());
-        resultPage.setRecords(result.getRecords().stream().map(entity -> {
-            TicketResultDTO dto = new TicketResultDTO();
-            dto.setTicketId(entity.getTicketId());
-            dto.setTrainCode(entity.getTrainCode());
-            dto.setOriginStation(entity.getOriginStation());
-            dto.setDestStation(entity.getDestStation());
-            dto.setDepartTime(entity.getDepartTime());
-            dto.setTicketType(entity.getTicketType());
-            dto.setTicketPrice(entity.getTicketPrice());
-            return dto;
-        }).toList());
-
-        return resultPage;
+        return result;
     }
 }
