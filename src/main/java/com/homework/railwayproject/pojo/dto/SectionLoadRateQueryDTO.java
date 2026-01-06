@@ -9,7 +9,7 @@ public class SectionLoadRateQueryDTO {
     private LocalDate flowDate;   // 查询日期
     private Integer startHour;    // 开始小时（可选）
     private Integer endHour;      // 结束小时（可选）
-    private Integer page;         // 页码，默认为1
+    private Integer current = 1;         // 当前页码，默认为1
     private Integer size;         // 每页大小，默认为10
     
     // 新增站点查询字段

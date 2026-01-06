@@ -359,3 +359,30 @@ CREATE TABLE IF NOT EXISTS overload_alert (
 CREATE INDEX idx_overload_line ON overload_alert(line_code);
 CREATE INDEX idx_overload_dates ON overload_alert(alert_start_date, alert_end_date);
 CREATE INDEX idx_overload_status ON overload_alert(status);
+
+-- 4. 创建列车增车建议表
+CREATE TABLE IF NOT EXISTS train_addition_suggestion (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '主键ID',
+    line_code VARCHAR(50) NOT NULL COMMENT '线路编码',
+    section VARCHAR(100) NOT NULL COMMENT '需要加车的区间',
+    suggested_train_number VARCHAR(20) COMMENT '建议车次号',
+    departure_time TIME COMMENT '建议发车时间',
+    arrival_time TIME COMMENT '建议到达时间',
+    carriage_count INT COMMENT '建议编组',
+    train_type VARCHAR(50) COMMENT '建议车型',
+    reason VARCHAR(500) COMMENT '建议原因',
+    expected_load_rate DECIMAL(5, 2) COMMENT '预计满载率',
+    status VARCHAR(20) DEFAULT 'PENDING' COMMENT '建议状态：PENDING-待处理，APPROVED-已批准，REJECTED-已拒绝',
+    created_by VARCHAR(20) DEFAULT 'SYSTEM' COMMENT '建议创建者类型：SYSTEM-系统生成，MANUAL-人工添加',
+    suggest_date DATE COMMENT '建议生成日期',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    create_by VARCHAR(50) COMMENT '创建人',
+    update_by VARCHAR(50) COMMENT '更新人',
+    is_deleted TINYINT(1) DEFAULT 0 COMMENT '是否删除：0-未删除，1-已删除',
+    INDEX idx_line_code (line_code),
+    INDEX idx_section (section),
+    INDEX idx_status (status),
+    INDEX idx_created_by (created_by),
+    INDEX idx_suggest_date (suggest_date)
+) COMMENT '列车增车建议表';

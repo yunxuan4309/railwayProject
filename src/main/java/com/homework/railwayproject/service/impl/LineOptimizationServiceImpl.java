@@ -3,14 +3,19 @@ package com.homework.railwayproject.service.impl;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.homework.railwayproject.mapper.*;
+import com.homework.railwayproject.mapper.LineOptimizationMapper;
+import com.homework.railwayproject.mapper.StationMapper;
 import com.homework.railwayproject.pojo.dto.SectionLoadRateQueryDTO;
-import com.homework.railwayproject.pojo.entity.SectionHourlyFlow;
-import com.homework.railwayproject.pojo.entity.SectionDailyFlow;
+import com.homework.railwayproject.pojo.dto.TrainAdditionSuggestionQueryDTO;
 import com.homework.railwayproject.pojo.entity.OverloadAlert;
+import com.homework.railwayproject.pojo.entity.SectionDailyFlow;
+import com.homework.railwayproject.pojo.entity.SectionHourlyFlow;
 import com.homework.railwayproject.pojo.entity.Station;
-import com.homework.railwayproject.pojo.vo.*;
+import com.homework.railwayproject.pojo.vo.LoadRateVO;
+import com.homework.railwayproject.pojo.vo.OverloadAlertVO;
+import com.homework.railwayproject.pojo.vo.TrainAdditionSuggestionVO;
 import com.homework.railwayproject.service.LineOptimizationService;
+import com.homework.railwayproject.service.TrainAdditionSuggestionService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -19,8 +24,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.*;
-import java.util.concurrent.TimeUnit;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
 
 @Slf4j
 @Service
@@ -36,6 +44,9 @@ public class LineOptimizationServiceImpl extends ServiceImpl<LineOptimizationMap
 
     @Autowired
     private StationMapper stationMapper;
+
+    @Autowired
+    private TrainAdditionSuggestionService trainAdditionSuggestionService;
 
     @Override
     public List<LoadRateVO> calculateSectionLoadRate(SectionLoadRateQueryDTO query) {
@@ -67,7 +78,7 @@ public class LineOptimizationServiceImpl extends ServiceImpl<LineOptimizationMap
         }
 
         // 设置缓存，2小时过期
-        redisTemplate.opsForValue().set(cacheKey, result, 2, TimeUnit.HOURS);
+        redisTemplate.opsForValue().set(cacheKey, result, 2, java.util.concurrent.TimeUnit.HOURS);
         log.info("区间满载率数据已缓存，key: {}, 数据条数: {}", cacheKey, result.size());
 
         return result;
@@ -89,7 +100,7 @@ public class LineOptimizationServiceImpl extends ServiceImpl<LineOptimizationMap
                 + ":endStationId" + (query.getEndStationId() != null ? query.getEndStationId() : "all")
                 + ":startStationName" + (query.getStartStationName() != null ? query.getStartStationName() : "all")
                 + ":endStationName" + (query.getEndStationName() != null ? query.getEndStationName() : "all")
-                + ":page" + query.getPage() + ":size" + query.getSize();
+                + ":page" + query.getCurrent() + ":size" + query.getSize();
 
         List<LoadRateVO> cachedResult = (List<LoadRateVO>) redisTemplate.opsForValue().get(cacheKey);
         if (cachedResult != null) {
@@ -98,7 +109,7 @@ public class LineOptimizationServiceImpl extends ServiceImpl<LineOptimizationMap
         }
 
         // 计算OFFSET
-        int offset = (query.getPage() - 1) * query.getSize();
+        int offset = (query.getCurrent() - 1) * query.getSize();
 
         // 为分页查询添加offset参数
         Map<String, Object> paramMap = new HashMap<>();
@@ -117,7 +128,7 @@ public class LineOptimizationServiceImpl extends ServiceImpl<LineOptimizationMap
         }
 
         // 设置缓存，2小时过期
-        redisTemplate.opsForValue().set(cacheKey, result, 2, TimeUnit.HOURS);
+        redisTemplate.opsForValue().set(cacheKey, result, 2, java.util.concurrent.TimeUnit.HOURS);
         log.info("区间满载率分页数据已缓存，key: {}, 数据条数: {}", cacheKey, result.size());
 
         return result;
@@ -133,7 +144,7 @@ public class LineOptimizationServiceImpl extends ServiceImpl<LineOptimizationMap
      */
     public IPage<LoadRateVO> getSectionLoadRateWithPaging(SectionLoadRateQueryDTO query) {
         // 创建分页对象
-        Page<LoadRateVO> page = new Page<>(query.getPage(), query.getSize());
+        Page<LoadRateVO> page = new Page<>(query.getCurrent(), query.getSize());
         
         // 使用新的缓存键策略，包含分页参数
         String cacheKey = "load:rate:hourly:paging:iPage:" + (query.getLineCode() != null ? query.getLineCode() : "all")
@@ -144,7 +155,7 @@ public class LineOptimizationServiceImpl extends ServiceImpl<LineOptimizationMap
                 + ":endStationId" + (query.getEndStationId() != null ? query.getEndStationId() : "all")
                 + ":startStationName" + (query.getStartStationName() != null ? query.getStartStationName() : "all")
                 + ":endStationName" + (query.getEndStationName() != null ? query.getEndStationName() : "all")
-                + ":page" + query.getPage() + ":size" + query.getSize();
+                + ":page" + query.getLineCode() + ":size" + query.getSize();
 
         // 尝试从缓存获取完整分页结果
         String countCacheKey = cacheKey + ":count";
@@ -156,7 +167,7 @@ public class LineOptimizationServiceImpl extends ServiceImpl<LineOptimizationMap
         }
 
         // 计算OFFSET
-        int offset = (query.getPage() - 1) * query.getSize();
+        int offset = (query.getCurrent() - 1) * query.getSize();
 
         // 为分页查询添加offset参数
         Map<String, Object> paramMap = new HashMap<>();
@@ -182,11 +193,11 @@ public class LineOptimizationServiceImpl extends ServiceImpl<LineOptimizationMap
         pageResult.setRecords(result);
         pageResult.setTotal(total);
         pageResult.setSize(query.getSize());
-        pageResult.setCurrent(query.getPage());
+        pageResult.setCurrent(query.getCurrent());
         pageResult.setPages(total != null ? (int) Math.ceil((double) total / query.getSize()) : 0);
 
         // 设置缓存，2小时过期
-        redisTemplate.opsForValue().set(cacheKey, pageResult, 2, TimeUnit.HOURS);
+        redisTemplate.opsForValue().set(cacheKey, pageResult, 2, java.util.concurrent.TimeUnit.HOURS);
         log.info("区间满载率分页数据已缓存，key: {}, 总数: {}, 当前页数据条数: {}", cacheKey, total, result.size());
 
         return pageResult;
@@ -245,10 +256,17 @@ public class LineOptimizationServiceImpl extends ServiceImpl<LineOptimizationMap
                     suggestion.setTrainType("CR400AF");
                     suggestion.setReason(String.format("该区间在%d:00时段满载率高达%.2f%%，建议加开列车", hour, loadRate));
                     suggestion.setExpectedLoadRate(loadRate * 0.7);
+                    suggestion.setStatus("PENDING");
+                    suggestion.setCreatedBy("SYSTEM");
 
                     suggestions.add(suggestion);
                 }
             }
+        }
+
+        // 将生成的建议保存到数据库
+        for (TrainAdditionSuggestionVO suggestion : suggestions) {
+            saveAdditionSuggestion(suggestion);
         }
 
         return suggestions;
@@ -380,5 +398,42 @@ public class LineOptimizationServiceImpl extends ServiceImpl<LineOptimizationMap
         alert.setAlertLevel("HIGH");
         alert.setStatus("ACTIVE");
         return alert;
+    }
+
+    @Override
+    public IPage<TrainAdditionSuggestionVO> getAdditionSuggestionsByLineCode(String lineCode, Page<TrainAdditionSuggestionVO> page) {
+        // 创建查询DTO
+        TrainAdditionSuggestionQueryDTO query = new TrainAdditionSuggestionQueryDTO();
+        query.setLineCode(lineCode);
+        query.setCurrent((int)page.getCurrent());
+        query.setSize((int)page.getSize());
+        
+        // 使用持久化数据进行分页查询
+        return trainAdditionSuggestionService.getSuggestionsByCondition(query);
+    }
+    
+    @Override
+    public TrainAdditionSuggestionVO addManualAdditionSuggestion(TrainAdditionSuggestionVO suggestion) {
+        // 设置建议为人工创建
+        suggestion.setCreatedBy("MANUAL");
+        return saveAdditionSuggestion(suggestion);
+    }
+    
+    @Override
+    public TrainAdditionSuggestionVO saveAdditionSuggestion(TrainAdditionSuggestionVO suggestion) {
+        log.info("保存增车建议: 线路={}, 区间={}", suggestion.getLineCode(), suggestion.getSection());
+        return trainAdditionSuggestionService.saveSuggestion(suggestion);
+    }
+    
+    @Override
+    public IPage<TrainAdditionSuggestionVO> querySuggestionsWithPaging(TrainAdditionSuggestionQueryDTO query) {
+        log.info("分页查询增车建议: 线路={}, 状态={}", query.getLineCode(), query.getStatus());
+        return trainAdditionSuggestionService.getSuggestionsByCondition(query);
+    }
+    
+    @Override
+    public TrainAdditionSuggestionVO updateSuggestionStatus(Long id, String status) {
+        log.info("更新增车建议状态: ID={}, 新状态={}", id, status);
+        return trainAdditionSuggestionService.updateSuggestionStatus(id, status);
     }
 }

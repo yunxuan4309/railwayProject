@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.homework.railwayproject.mapper.TrainAdditionSuggestionMapper">
+
+    <resultMap id="TrainAdditionSuggestionVOMap" type="com.homework.railwayproject.pojo.vo.TrainAdditionSuggestionVO">
+        <result column="id" property="id"/>
+        <result column="line_code" property="lineCode"/>
+        <result column="section" property="section"/>
+        <result column="suggested_train_number" property="suggestedTrainNumber"/>
+        <result column="departure_time" property="departureTime"/>
+        <result column="arrival_time" property="arrivalTime"/>
+        <result column="carriage_count" property="carriageCount"/>
+        <result column="train_type" property="trainType"/>
+        <result column="reason" property="reason"/>
+        <result column="expected_load_rate" property="expectedLoadRate"/>
+        <result column="status" property="status"/>
+        <result column="created_by" property="createdBy"/>
+    </resultMap>
+
+    <!-- 根据条件分页查询增车建议 -->
+    <select id="selectSuggestionsByCondition" parameterType="map"
+            resultMap="TrainAdditionSuggestionVOMap">
+        SELECT
+            id,
+            line_code,
+            section,
+            suggested_train_number,
+            departure_time,
+            arrival_time,
+            carriage_count,
+            train_type,
+            reason,
+            expected_load_rate,
+            status,
+            created_by
+        FROM train_addition_suggestion
+        WHERE is_deleted = 0
+        <if test="params.query.lineCode != null and params.query.lineCode != ''">
+            AND line_code = #{params.query.lineCode}
+        </if>
+        <if test="params.query.section != null and params.query.section != ''">
+            AND section LIKE CONCAT('%', #{params.query.section}, '%')
+        </if>
+        <if test="params.query.status != null and params.query.status != ''">
+            AND status = #{params.query.status}
+        </if>
+        <if test="params.query.createdBy != null and params.query.createdBy != ''">
+            AND created_by = #{params.query.createdBy}
+        </if>
+        ORDER BY create_time DESC
+        LIMIT #{params.query.size} OFFSET #{params.offset}
+    </select>
+
+    <!-- 查询增车建议总数 -->
+    <select id="selectSuggestionsCount" parameterType="com.homework.railwayproject.pojo.dto.TrainAdditionSuggestionQueryDTO"
+            resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM train_addition_suggestion
+        WHERE is_deleted = 0
+        <if test="query.lineCode != null and query.lineCode != ''">
+            AND line_code = #{query.lineCode}
+        </if>
+        <if test="query.section != null and query.section != ''">
+            AND section LIKE CONCAT('%', #{query.section}, '%')
+        </if>
+        <if test="query.status != null and query.status != ''">
+            AND status = #{query.status}
+        </if>
+        <if test="query.createdBy != null and query.createdBy != ''">
+            AND created_by = #{query.createdBy}
+        </if>
+    </select>
+
+</mapper>

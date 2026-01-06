@@ -2,6 +2,7 @@ package com.homework.railwayproject.service;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.homework.railwayproject.pojo.dto.SectionLoadRateQueryDTO;
+import com.homework.railwayproject.pojo.dto.TrainAdditionSuggestionQueryDTO;
 import com.homework.railwayproject.pojo.vo.LoadRateVO;
 import com.homework.railwayproject.pojo.vo.OverloadAlertVO;
 import com.homework.railwayproject.pojo.vo.TrainAdditionSuggestionVO;
@@ -60,4 +61,29 @@ public interface LineOptimizationService {
      * 检测连续过载区间（每日执行）
      */
     void detectContinuousOverloadSections(LocalDate checkDate);
+    
+    /**
+     * 根据线路编码获取加车建议（分页）
+     */
+    IPage<TrainAdditionSuggestionVO> getAdditionSuggestionsByLineCode(String lineCode, com.baomidou.mybatisplus.extension.plugins.pagination.Page<TrainAdditionSuggestionVO> page);
+    
+    /**
+     * 添加人工增开建议
+     */
+    TrainAdditionSuggestionVO addManualAdditionSuggestion(TrainAdditionSuggestionVO suggestion);
+    
+    /**
+     * 保存增车建议到数据库
+     */
+    TrainAdditionSuggestionVO saveAdditionSuggestion(TrainAdditionSuggestionVO suggestion);
+    
+    /**
+     * 分页查询增车建议
+     */
+    IPage<TrainAdditionSuggestionVO> querySuggestionsWithPaging(TrainAdditionSuggestionQueryDTO query);
+    
+    /**
+     * 更新增车建议状态
+     */
+    TrainAdditionSuggestionVO updateSuggestionStatus(Long id, String status);
 }

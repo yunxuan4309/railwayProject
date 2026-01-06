@@ -1,8 +1,11 @@
 package com.homework.railwayproject.controller;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.homework.railwayproject.exception.ServiceException;
 import com.homework.railwayproject.pojo.dto.SectionLoadRateQueryDTO;
+import com.homework.railwayproject.pojo.dto.TrainAdditionSuggestionQueryDTO;
 import com.homework.railwayproject.pojo.vo.LoadRateVO;
 import com.homework.railwayproject.pojo.vo.OverloadAlertVO;
 import com.homework.railwayproject.pojo.vo.TrainAdditionSuggestionVO;
@@ -58,7 +61,7 @@ public class LineOptimizationController {
             query.setEndStationId(endStationId);
             query.setStartStationName(startStationName);
             query.setEndStationName(endStationName);
-            query.setPage(page);
+            query.setCurrent(page);
             query.setSize(size);
 
             IPage<LoadRateVO> result = lineOptimizationService.getSectionLoadRateWithPaging(query);
@@ -104,6 +107,40 @@ public class LineOptimizationController {
     }
 
     /**
+     * 4. 根据线路编码获取加车建议（分页）
+     */
+    @GetMapping("/addition-suggestions-by-line")
+    @Operation(summary = "根据线路编码获取加车建议（分页）", description = "根据线路编码获取加车建议，支持分页")
+    public JsonResult<IPage<TrainAdditionSuggestionVO>> getAdditionSuggestionsByLineCode(
+            @Parameter(description = "线路编码") @RequestParam(required = false) String lineCode,
+            @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer current,
+            @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer size) {
+        try {
+            com.baomidou.mybatisplus.extension.plugins.pagination.Page<TrainAdditionSuggestionVO> page = new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(current, size);
+            IPage<TrainAdditionSuggestionVO> result = lineOptimizationService.getAdditionSuggestionsByLineCode(lineCode, page);
+            return JsonResult.ok(result);
+        } catch (Exception e) {
+            log.error("获取线路加车建议失败", e);
+            return JsonResult.fail(new ServiceException(ServiceCode.ERROR_UNKNOWN, e.getMessage()));
+        }
+    }
+    
+    /**
+     * 5. 添加人工增开建议
+     */
+    @PostMapping("/addition-suggestions")
+    @Operation(summary = "添加人工增开建议", description = "添加人工增开建议")
+    public JsonResult<TrainAdditionSuggestionVO> addManualAdditionSuggestion(@RequestBody TrainAdditionSuggestionVO suggestion) {
+        try {
+            TrainAdditionSuggestionVO result = lineOptimizationService.addManualAdditionSuggestion(suggestion);
+            return JsonResult.ok(result);
+        } catch (Exception e) {
+            log.error("添加人工增开建议失败", e);
+            return JsonResult.fail(new ServiceException(ServiceCode.ERROR_UNKNOWN, e.getMessage()));
+        }
+    }
+
+    /**
      * 手动触发区间客流统计任务（用于测试或补数据）
      */
     @PostMapping("/trigger-statistics")
@@ -116,6 +153,56 @@ public class LineOptimizationController {
             return JsonResult.ok("区间客流统计任务已启动");
         } catch (Exception e) {
             log.error("触发统计任务失败", e);
+            return JsonResult.fail(new ServiceException(ServiceCode.ERROR_UNKNOWN, e.getMessage()));
+        }
+    }
+    
+    /**
+     * 6. 分页查询增车建议（组合条件查询）
+     */
+    @GetMapping("/addition-suggestions/paging")
+    @Operation(summary = "分页查询增车建议", description = "根据线路、区间、状态等条件分页查询增车建议")
+    public JsonResult<IPage<TrainAdditionSuggestionVO>> queryAdditionSuggestionsWithPaging(
+            @Parameter(description = "线路编码") @RequestParam(required = false) String lineCode,
+            @Parameter(description = "区间") @RequestParam(required = false) String section,
+            @Parameter(description = "建议状态") @RequestParam(required = false) String status,
+            @Parameter(description = "创建者类型") @RequestParam(required = false) String createdBy,
+            @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer current,
+            @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer size) {
+        try {
+            TrainAdditionSuggestionQueryDTO query = new TrainAdditionSuggestionQueryDTO();
+            query.setLineCode(lineCode);
+            query.setSection(section);
+            query.setStatus(status);
+            query.setCreatedBy(createdBy);
+            query.setCurrent(current);
+            query.setSize(size);
+            
+            IPage<TrainAdditionSuggestionVO> result = lineOptimizationService.querySuggestionsWithPaging(query);
+            return JsonResult.ok(result);
+        } catch (Exception e) {
+            log.error("分页查询增车建议失败", e);
+            return JsonResult.fail(new ServiceException(ServiceCode.ERROR_UNKNOWN, e.getMessage()));
+        }
+    }
+    
+    /**
+     * 7. 更新增车建议状态（审核功能）
+     */
+    @PutMapping("/addition-suggestions/{id}/status")
+    @Operation(summary = "更新增车建议状态", description = "审核增车建议，更新其状态（PENDING/APPROVED/REJECTED）")
+    public JsonResult<TrainAdditionSuggestionVO> updateSuggestionStatus(
+            @Parameter(description = "建议ID") @PathVariable Long id,
+            @Parameter(description = "新状态") @RequestParam String status) {
+        try {
+            TrainAdditionSuggestionVO updatedSuggestion = lineOptimizationService.updateSuggestionStatus(id, status);
+            if (updatedSuggestion != null) {
+                return JsonResult.ok(updatedSuggestion);
+            } else {
+                return JsonResult.fail(new ServiceException(ServiceCode.ERROR_NOT_FOUND, "找不到指定的增车建议"));
+            }
+        } catch (Exception e) {
+            log.error("更新增车建议状态失败", e);
             return JsonResult.fail(new ServiceException(ServiceCode.ERROR_UNKNOWN, e.getMessage()));
         }
     }

@@ -6,6 +6,7 @@ import java.time.LocalTime;
 
 @Data
 public class TrainAdditionSuggestionVO {
+    private Long id;                       // 建议ID
     private String lineCode;               // 线路编码
     private String section;                // 需要加车的区间
     private String suggestedTrainNumber;   // 建议车次号
@@ -15,4 +16,8 @@ public class TrainAdditionSuggestionVO {
     private String trainType;              // 建议车型
     private String reason;                 // 建议原因
     private Double expectedLoadRate;       // 预计满载率
+    
+    // 新增字段用于数据库存储
+    private String status;                 // 建议状态
+    private String createdBy;              // 建议创建者类型
 }

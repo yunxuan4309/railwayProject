@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.homework.railwayproject.exception.ServiceException;
 import com.homework.railwayproject.pojo.entity.Line;
+import com.homework.railwayproject.pojo.entity.Train;
 import com.homework.railwayproject.service.LineService;
 import com.homework.railwayproject.web.JsonResult;
 import com.homework.railwayproject.web.ServiceCode;
@@ -13,6 +14,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @Slf4j
 @RestController
@@ -98,6 +101,39 @@ public class LineController {
             return JsonResult.ok(true);
         } catch (Exception e) {
             log.error("删除线路失败", e);
+            return JsonResult.fail(new ServiceException(ServiceCode.ERROR_UNKNOWN, e.getMessage()));
+        }
+    }
+
+    @GetMapping("/{lineCode}/trains")
+    @Operation(summary = "根据线路编码查询列车信息", description = "查询指定线路上运行的所有列车信息")
+    public JsonResult<List<Train>> getTrainsByLineCode(
+            @Parameter(description = "线路编码") @PathVariable String lineCode) {
+        try {
+            List<Train> trains = lineService.getTrainsByLineCode(lineCode);
+            if (trains == null || trains.isEmpty()) {
+                return JsonResult.ok(java.util.Collections.emptyList());
+            }
+            return JsonResult.ok(trains);
+        } catch (Exception e) {
+            log.error("查询线路列车失败", e);
+            return JsonResult.fail(new ServiceException(ServiceCode.ERROR_UNKNOWN, e.getMessage()));
+        }
+    }
+    
+    @GetMapping("/{lineCode}/trains/hour/{hour}")
+    @Operation(summary = "根据线路编码和时段查询列车信息", description = "查询指定线路上在特定时段运行的列车信息")
+    public JsonResult<List<Train>> getTrainsByLineAndHour(
+            @Parameter(description = "线路编码") @PathVariable String lineCode,
+            @Parameter(description = "时段（小时，如5表示5点到6点之间）") @PathVariable Integer hour) {
+        try {
+            List<Train> trains = lineService.getTrainsByLineAndHour(lineCode, hour);
+            if (trains == null || trains.isEmpty()) {
+                return JsonResult.ok(java.util.Collections.emptyList());
+            }
+            return JsonResult.ok(trains);
+        } catch (Exception e) {
+            log.error("查询线路时段列车失败", e);
             return JsonResult.fail(new ServiceException(ServiceCode.ERROR_UNKNOWN, e.getMessage()));
         }
     }

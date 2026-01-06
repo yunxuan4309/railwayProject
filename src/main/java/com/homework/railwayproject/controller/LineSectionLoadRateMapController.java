@@ -61,7 +61,7 @@ public class LineSectionLoadRateMapController {
             query.setEndStationId(endStationId);
             query.setStartStationName(startStationName);
             query.setEndStationName(endStationName);
-            query.setPage(page);
+            query.setCurrent(page);
             query.setSize(size);
 
             IPage<LineSectionLoadRateVO> result = lineSectionLoadRateMapService.getLineSectionLoadRateMapWithPaging(query);

@@ -49,4 +49,21 @@ public interface HighSpeedPassengerCleanMapper extends BaseMapper<HighSpeedPasse
      * @return 列车等级类型列表
      */
     List<String> selectDistinctTrainLevelTypes();
+    
+    /**
+     * 根据线路编码查询相关的列车编码列表
+     * 
+     * @param lineCode 线路编码
+     * @return 列车编码列表
+     */
+    List<Integer> selectTrainCodesByLineCode(String lineCode);
+    
+    /**
+     * 根据线路编码和时段查询相关的列车编码列表
+     * 
+     * @param lineCode 线路编码
+     * @param hour 时段（小时）
+     * @return 列车编码列表
+     */
+    List<Integer> selectTrainCodesByLineAndHour(String lineCode, Integer hour);
 }

@@ -16,6 +16,6 @@ public class LineSectionLoadRateQueryDTO {
     private Integer endStationId;     // 终点站ID
     private String startStationName;  // 起始站名称
     private String endStationName;    // 终点站名称
-    private Integer page = 1;         // 页码，默认为1
+    private Integer current = 1;         // 当前页码，默认为1
     private Integer size = 10;        // 每页大小，默认为10
 }

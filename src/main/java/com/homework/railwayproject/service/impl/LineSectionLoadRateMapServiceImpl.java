@@ -38,10 +38,10 @@ public class LineSectionLoadRateMapServiceImpl implements LineSectionLoadRateMap
         }
 
         // 创建分页对象
-        Page<LineSectionLoadRateVO> page = new Page<>(query.getPage(), query.getSize());
+        Page<LineSectionLoadRateVO> page = new Page<>(query.getCurrent(), query.getSize());
 
         // 查询数据
-        List<LineSectionLoadRateVO> result = lineSectionLoadRateMapMapper.selectLineSectionLoadRateMap(query, (query.getPage() - 1) * query.getSize(), query.getSize());
+        List<LineSectionLoadRateVO> result = lineSectionLoadRateMapMapper.selectLineSectionLoadRateMap(query, (query.getCurrent() - 1) * query.getSize(), query.getSize());
         
         // 计算总数
         Integer total = lineSectionLoadRateMapMapper.selectLineSectionLoadRateCount(query);
@@ -51,7 +51,7 @@ public class LineSectionLoadRateMapServiceImpl implements LineSectionLoadRateMap
         pageResult.setRecords(result);
         pageResult.setTotal(total);
         pageResult.setSize(query.getSize());
-        pageResult.setCurrent(query.getPage());
+        pageResult.setCurrent(query.getCurrent());
         pageResult.setPages(total != null ? (int) Math.ceil((double) total / query.getSize()) : 0);
 
         // 为每个结果设置timeRange
@@ -104,7 +104,7 @@ public class LineSectionLoadRateMapServiceImpl implements LineSectionLoadRateMap
         sb.append(":").append(query.getEndStationId() != null ? query.getEndStationId() : "all");
         sb.append(":").append(query.getStartStationName() != null ? query.getStartStationName() : "all");
         sb.append(":").append(query.getEndStationName() != null ? query.getEndStationName() : "all");
-        sb.append(":page").append(query.getPage()).append(":size").append(query.getSize());
+        sb.append(":page").append(query.getCurrent()).append(":size").append(query.getSize());
         
         return sb.toString();
     }

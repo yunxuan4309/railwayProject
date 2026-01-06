@@ -15,4 +15,8 @@ public interface LineService {
     Line updateLine(Line line);
 
     Boolean deleteLine(String lineCode);
+
+    java.util.List<com.homework.railwayproject.pojo.entity.Train> getTrainsByLineCode(String lineCode);
+    
+    java.util.List<com.homework.railwayproject.pojo.entity.Train> getTrainsByLineAndHour(String lineCode, Integer hour);
 }

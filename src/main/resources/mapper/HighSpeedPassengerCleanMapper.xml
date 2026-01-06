@@ -168,4 +168,21 @@
         ORDER BY train_level_code
     </select>
 
+    <select id="selectTrainCodesByLineCode" resultType="java.lang.Integer">
+        SELECT DISTINCT train_code
+        FROM high_speed_passenger_clean
+        WHERE operation_line_code = #{lineCode}
+        AND is_deleted = 0
+        AND train_code IS NOT NULL
+    </select>
+
+    <select id="selectTrainCodesByLineAndHour" resultType="java.lang.Integer">
+        SELECT DISTINCT train_code
+        FROM high_speed_passenger_clean
+        WHERE operation_line_code = #{lineCode}
+        AND HOUR(depart_time) = #{hour}
+        AND is_deleted = 0
+        AND train_code IS NOT NULL
+    </select>
+
 </mapper>
