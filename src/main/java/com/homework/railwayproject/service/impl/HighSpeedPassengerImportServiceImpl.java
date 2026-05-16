@@ -18,9 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.math.BigDecimal;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -928,13 +926,63 @@ public class HighSpeedPassengerImportServiceImpl implements HighSpeedPassengerIm
         progress.setMessage("开始解析文件...");
         importProgressMap.put(taskId, progress);
         
+        // 在异步任务开始前，将文件内容读取到内存中，避免异步处理时临时文件被删除
+        byte[] fileBytes = file.getBytes();
+        String originalFilename = file.getOriginalFilename();
+        String contentType = file.getContentType();
+        
         // 提交异步任务
         executorService.submit(() -> {
             try {
-                log.info("开始异步导入任务: {}，文件名: {}", taskId, file.getOriginalFilename());
+                log.info("开始异步导入任务: {}，文件名: {}", taskId, originalFilename);
+                
+                // 使用内存中的文件内容创建自定义MultipartFile对象
+                MultipartFile tempFile = new MultipartFile() {
+                    @Override
+                    public String getName() {
+                        return originalFilename;
+                    }
+
+                    @Override
+                    public String getOriginalFilename() {
+                        return originalFilename;
+                    }
+
+                    @Override
+                    public String getContentType() {
+                        return contentType;
+                    }
+
+                    @Override
+                    public boolean isEmpty() {
+                        return fileBytes == null || fileBytes.length == 0;
+                    }
+
+                    @Override
+                    public long getSize() {
+                        return fileBytes.length;
+                    }
+
+                    @Override
+                    public byte[] getBytes() throws IOException {
+                        return fileBytes;
+                    }
+
+                    @Override
+                    public InputStream getInputStream() throws IOException {
+                        return new ByteArrayInputStream(fileBytes);
+                    }
+
+                    @Override
+                    public void transferTo(File dest) throws IOException, IllegalStateException {
+                        try (FileOutputStream fos = new FileOutputStream(dest)) {
+                            fos.write(fileBytes);
+                        }
+                    }
+                };
                 
                 // 解析CSV文件
-                List<Map<String, String>> csvData = parseCsvFileForAsync(file, taskId);
+                List<Map<String, String>> csvData = parseCsvFileForAsync(tempFile, taskId);
                 int totalRecords = csvData.size();
                 
                 // 更新进度信息
@@ -1012,7 +1060,7 @@ public class HighSpeedPassengerImportServiceImpl implements HighSpeedPassengerIm
                 
                 // 导入完成后自动执行数据清洗
                 try {
-                    cleanData(file.getOriginalFilename());
+                    cleanData(originalFilename);
                     
                     ImportProgress completeProgress = importProgressMap.get(taskId);
                     if (completeProgress != null) {
